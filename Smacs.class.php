@@ -80,7 +80,7 @@ class Slice extends Smacs
 		$this->context = $context;
 		$beg = preg_quote($beg);
 		$end = $end ? preg_quote($end) : $beg;
-		$this->rgx = "/$beg([\s\S]*?)$end/i";
+		$this->rgx = "/$beg([\s\S]*?)$end/";
 		if(!preg_match($this->rgx, $this->context->out, $m)) {
 			throw new Exception("slice pattern `$this->rgx` not found in template\n", E_USER_ERROR);
 		}

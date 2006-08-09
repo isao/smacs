@@ -1,19 +1,17 @@
 <?php
-
-//phpunit SmacsTest SmacsTest.php
-
 require_once '../Smacs.class.php';
 require_once 'PHPUnit2/Framework/TestCase.php';
 
 class SmacsTest extends PHPUnit2_Framework_TestCase
 {
 	public $so;
+
 	public $tp = '
 title: {title}
 <!-- row -->{c1}, {c2}, {c3}
 <!-- row -->
-footer: {foot}
-';
+footer: {foot}';
+
 	public $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
 	
 	public function setUp()
@@ -35,39 +33,27 @@ footer: {foot}
 	
 	public function testMixIn()
 	{
-	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
-
-		$this->assertEquals($this->tp, $this->so->out);
-
-	  $this->so->mixIn($kvs);
-
-		$this->assertNotEquals($this->tp, $this->so->out);
-
 		$expected = '
 title: t1 & t2
 <!-- row -->{c1}, {c2}, {c3}
 <!-- row -->
-footer: <footer>
-';
+footer: <footer>';
+	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
+	  $this->so->mixIn($kvs);
+		$this->assertNotEquals($this->tp, $this->so->out);
 		$this->assertEquals($expected, $this->so->out);
 	}
 	
 	public function testMixInWithEncoding()
 	{
-	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
-
-		$this->assertEquals($this->tp, $this->so->out);
-
-	  $this->so->mixIn($kvs, SMACS_ENCODE_HTML);
-
-		$this->assertNotEquals($this->tp, $this->so->out);
-
 		$expected = '
 title: t1 &amp; t2
 <!-- row -->{c1}, {c2}, {c3}
 <!-- row -->
-footer: &lt;footer&gt;
-';
+footer: &lt;footer&gt;';
+	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
+	  $this->so->mixIn($kvs, SMACS_ENCODE_HTML);
+		$this->assertNotEquals($this->tp, $this->so->out);
 		$this->assertEquals($expected, $this->so->out);
 	}
 
@@ -78,25 +64,4 @@ footer: &lt;footer&gt;
 	}
 
 }
-
-/*$page =& new Smac("
-title {title}
-<!-- row -->{c1}, {c2}, {c3}
-<!-- row -->
-foot {foot}");
-$page->mixIn(array('{title}'=>'mytitle', '{foot}'=>'myfoot'));
-
-$rows =& new Slice($page, '<!-- row -->');
-for($i=0; $i<3; $i++) {
-	for($j=0; $j<4; $j++) {
-		$rows->mixAdd(array('{c1}'=>"($i,$j)", '{c2}'=>"($i,$j)", '{c3}'=>"($i,$j)"));
-	}
-	$rows->splice();
-}
-$rows->splice();
-
-print '<pre>';
-print htmlentities($page->__toString());
-*/
-
 ?>
