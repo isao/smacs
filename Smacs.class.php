@@ -5,6 +5,8 @@ if(!defined('SMACS_ADD_BRACES'))  define('SMACS_ADD_BRACES', 8);
 
 class Smacs
 {
+	public static $openbrace = '{';
+	public static $closebrace = '}';
 	public $out; ///! (string)
 	
 	public function __construct($s)
@@ -35,7 +37,7 @@ class Smacs
 
 	public function addBraces($a)
 	{
-		foreach($a as $i) $b[] = '{'.$i.'}';
+		foreach($a as $i) $b[] = self::$openbrace.$i.self::$closebrace;
 		return $b;
 	}
 	
