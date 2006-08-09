@@ -5,9 +5,9 @@ if(!defined('SMACS_ADD_BRACES'))  define('SMACS_ADD_BRACES', 8);
 
 class Smacs
 {
-	public static $openbrace = '{';
-	public static $closebrace = '}';
-	public $out; ///! (string)
+	public static $keyprefix = '{';
+	public static $keysuffix = '}';
+	protected $out; ///! (string)
 	
 	public function __construct($s)
 	{
@@ -37,12 +37,17 @@ class Smacs
 
 	public function addBraces($a)
 	{
-		foreach($a as $i) $b[] = self::$openbrace.$i.self::$closebrace;
+		foreach($a as $i) $b[] = self::$keyprefix.$i.self::$keysuffix;
 		return $b;
+	}
+
+	public function out()
+	{
+		return $this->out;
 	}
 	
 	public function __toString() {
-		return $this->out;
+		return $this->out();
 	}
 
 }
@@ -85,7 +90,7 @@ class SmacsBuffer extends Smacs
 
 class Slice extends Smacs
 {
-	public    $context; ///! (object)
+	protected $context; ///! (object)
 	protected $rgx;     ///! (string) regular expression
 	protected $mold;    ///! (string) sub template
 
@@ -95,7 +100,7 @@ class Slice extends Smacs
 		$beg = preg_quote($beg);
 		$end = $end ? preg_quote($end) : $beg;
 		$this->rgx = "/$beg([\s\S]*?)$end/";
-		if(!preg_match($this->rgx, $this->context->out, $m)) {
+		if(!preg_match($this->rgx, $this->context->out(), $m)) {
 			throw new Exception("slice pattern `$this->rgx` not found in template\n", E_USER_ERROR);
 		}
 		$this->mold = $m[1];
@@ -109,7 +114,9 @@ class Slice extends Smacs
 
 	public function splice()
 	{
-		$this->context->out = preg_replace($this->rgx, $this->out, $this->context->out);
+		$this->context->set(
+			preg_replace($this->rgx, $this->out(), $this->context->out())
+		);
 	}
 
 }
