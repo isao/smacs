@@ -10,8 +10,8 @@ class SmacsTest extends PHPUnit2_Framework_TestCase
 	
 	public function setUp()
 	{
-		$this->tp = 'title: {title}, footer: {footer}';
-		$this->kv = array("{title}"=>"t1's & t2's", "{footer}"=>"<footer>");
+		$this->tp = 'title: {title}, footer: {footer}';//template
+		$this->kv = array("{title}"=>"t1's & t2's", "{footer}"=>"<footer>");//template data
 		$this->so = new Smacs($this->tp);
 	}
 	
@@ -84,10 +84,8 @@ class SmacsTest extends PHPUnit2_Framework_TestCase
 
 	public function textMixOut()
 	{
-		$expected = "title: t1\'s &amp; t2\'s, footer: &lt;footer&gt;";
-		$kv = array("title"=>"t1's & t2's", "footer"=>"<footer>");
-		$encoders = SMACS_ADD_BRACES + SMACS_ENCODE_HTML + SMACS_ENCODE_SQL;
-	  $out = $this->so->mixOut($kv, $encoders);
+		$expected = "title: t1's & t2's, footer: <footer>";
+	  $out = $this->so->mixOut($kv);
 		$this->assertNotEquals($this->tp, $out);
 		$this->assertEquals($expected, $out);	
 	}
