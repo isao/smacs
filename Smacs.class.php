@@ -1,5 +1,7 @@
 <?php
 if(!defined('SMACS_ENCODE_HTML')) define('SMACS_ENCODE_HTML', 2);
+if(!defined('SMACS_ENCODE_SQL'))  define('SMACS_ENCODE_SQL', 4);
+if(!defined('SMACS_ADD_BRACES'))  define('SMACS_ADD_BRACES', 8);
 
 class Smacs
 {
@@ -15,24 +17,32 @@ class Smacs
 		$this->out = $s; 
 	}
 	
-	public function mixIn($kv, $encode=null)
+	public function mixIn($kv, $encode=0)
 	{
 		$this->out = $this->mixOut($kv, $this->out, $encode); 
 	}
 	
-	public function mixOut($kv, $s, $encode)
+	public function mixOut($kv, $s, $encode=0)
 	{
 		$k = array_keys($kv);
+		if($encode & SMACS_ADD_BRACES)  $k = $this->addBraces($k);
+
 		$v = array_values($kv);
-		if($encode == SMACS_ENCODE_HTML) {
-			$v = array_map('htmlentities', array_values($kv));
-		}
+		if($encode & SMACS_ENCODE_HTML) $v = array_map('htmlentities', $v);
+		if($encode & SMACS_ENCODE_SQL)  $v = array_map('addslashes',   $v);
 		return str_replace($k, $v, $s);
+	}
+
+	public function addBraces($a)
+	{
+		foreach($a as $i) $b[] = '{'.$i.'}';
+		return $b;
 	}
 	
 	public function __toString() {
 		return $this->out;
 	}
+
 }
 
 class SmacsFile extends Smacs
@@ -50,6 +60,7 @@ class SmacsFile extends Smacs
 	{
 		return $p.basename($_SERVER['SCRIPT_NAME'], self::$phpext).self::$tplext;
 	}
+
 }
 
 class SmacsBuffer extends Smacs
@@ -67,6 +78,7 @@ class SmacsBuffer extends Smacs
 			ob_end_clean();
 		}
 	}
+
 }
 
 class Slice extends Smacs
@@ -97,5 +109,6 @@ class Slice extends Smacs
 	{
 		$this->context->out = preg_replace($this->rgx, $this->out, $this->context->out);
 	}
+
 }
 ?>

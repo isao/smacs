@@ -5,17 +5,13 @@ require_once 'PHPUnit2/Framework/TestCase.php';
 class SmacsTest extends PHPUnit2_Framework_TestCase
 {
 	public $so;
-
-	public $tp = '
-title: {title}
-<!-- row -->{c1}, {c2}, {c3}
-<!-- row -->
-footer: {foot}';
-
-	public $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
+	public $tp;
+	public $kv;
 	
 	public function setUp()
 	{
+		$this->tp = 'title: {title}, footer: {footer}';
+		$this->kv = array("{title}"=>"t1's & t2's", "{footer}"=>"<footer>");
 		$this->so = new Smacs($this->tp);
 	}
 	
@@ -29,38 +25,66 @@ footer: {foot}';
 		$newtp = "new stuff\n".$this->tp."\nmore new stuff";
 	  $this->so->set($newtp);
 		$this->assertEquals($newtp, $this->so->out);
+
+		$newtp = '';
+	  $this->so->set($newtp);
+		$this->assertEquals($newtp, $this->so->out);
 	}
 	
 	public function testMixIn()
 	{
-		$expected = '
-title: t1 & t2
-<!-- row -->{c1}, {c2}, {c3}
-<!-- row -->
-footer: <footer>';
-	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
-	  $this->so->mixIn($kvs);
-		$this->assertNotEquals($this->tp, $this->so->out);
-		$this->assertEquals($expected, $this->so->out);
-	}
-	
-	public function testMixInWithEncoding()
-	{
-		$expected = '
-title: t1 &amp; t2
-<!-- row -->{c1}, {c2}, {c3}
-<!-- row -->
-footer: &lt;footer&gt;';
-	  $kvs = array('{title}'=>'t1 & t2', '{foot}'=>'<footer>');
-	  $this->so->mixIn($kvs, SMACS_ENCODE_HTML);
+		$expected = "title: t1's & t2's, footer: <footer>";
+	  $this->so->mixIn($this->kv);
 		$this->assertNotEquals($this->tp, $this->so->out);
 		$this->assertEquals($expected, $this->so->out);
 	}
 
-	public function toString()
+	public function testMixIn_SMACS_ENCODE_HTML()
 	{
-	  $this->assertEquals($this->tp, $this->so);
-	  $this->assertEquals($this->tp, "{$this->so}");
+		$expected = "title: t1's &amp; t2's, footer: &lt;footer&gt;";
+	  $this->so->mixIn($this->kv, SMACS_ENCODE_HTML);
+		$this->assertNotEquals($this->tp, $this->so->out);
+		$this->assertEquals($expected, $this->so->out);
+	}
+
+	public function testMixIn_SMACS_ENCODE_SQL()
+	{
+		$expected = "title: t1\'s & t2\'s, footer: <footer>";
+	  $this->so->mixIn($this->kv, SMACS_ENCODE_SQL);
+		$this->assertNotEquals($this->tp, $this->so->out);
+		$this->assertEquals($expected, $this->so->out);
+	}
+
+	public function testMixIn_SMACS_ADD_BRACES()
+	{
+		$expected = "title: t1's & t2's, footer: <footer>";
+		$kv = array("title"=>"t1's & t2's", "footer"=>"<footer>");
+	  $this->so->mixIn($kv, SMACS_ADD_BRACES);
+		$this->assertNotEquals($this->tp, $this->so->out);
+		$this->assertEquals($expected, $this->so->out);
+	}
+
+	public function testMixIn_SMACS_ENCODE_HTML_and_SQL()
+	{
+		$expected = "title: t1\'s &amp; t2\'s, footer: &lt;footer&gt;";
+	  $this->so->mixIn($this->kv, SMACS_ENCODE_SQL + SMACS_ENCODE_HTML);
+		$this->assertNotEquals($this->tp, $this->so->out);
+		$this->assertEquals($expected, $this->so->out);
+	}
+
+	public function testMixIn_SMACS_ENCODE_ALL()
+	{
+		$expected = "title: t1\'s &amp; t2\'s, footer: &lt;footer&gt;";
+		$kv = array("title"=>"t1's & t2's", "footer"=>"<footer>");
+		$encoders = SMACS_ADD_BRACES + SMACS_ENCODE_HTML + SMACS_ENCODE_SQL;
+	  $this->so->mixIn($kv, $encoders);
+		$this->assertNotEquals($this->tp, $this->so->out);
+		$this->assertEquals($expected, $this->so->out);
+	}
+
+	public function testToString()
+	{
+	  $this->assertEquals($this->tp, $this->so->__toString());
 	}
 
 }
