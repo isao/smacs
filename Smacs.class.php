@@ -24,7 +24,7 @@ class Smacs
 		$this->out = $this->mixOut($kv, $this->out, $encode); 
 	}
 	
-	public function mixOut($kv, $s, $encode=0)
+	public function mixOut(&$kv, &$s, $encode=0)
 	{
 		$k = array_keys($kv);
 		if($encode & SMACS_ADD_BRACES)  $k = $this->addBraces($k);
@@ -63,9 +63,14 @@ class SmacsFile extends Smacs
 		$this->set(file_get_contents($s));
 	}
 
-	public function defaultfile($p='')
+	protected function defaultfile($s)
 	{
-		return $p.basename($_SERVER['SCRIPT_NAME'], self::$phpext).self::$tplext;
+		if($s == '') {
+			$s = './';
+		} elseif(substr($s, -1) != DIRECTORY_SEPARATOR) {
+			$s.= DIRECTORY_SEPARATOR;
+		}
+		return $s.basename($_SERVER['SCRIPT_NAME'], self::$phpext).self::$tplext;
 	}
 
 }
