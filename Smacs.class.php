@@ -29,7 +29,7 @@ class Smacs
 		$this->out = $this->mixOut($kv, $this->out, $encode);
 	}
 
-	public function mixOut(&$kv, &$s, $encode=0)
+	public function mixOut($kv, $s, $encode=0)
 	{
 		$k = array_keys($kv);
 		if($encode & SMACS_ADD_BRACES)  $k = $this->addBraces($k);
@@ -59,41 +59,40 @@ class Smacs
 
 class SmacsFile extends Smacs
 {
-	public static $tplext = '.tpl.html';
-	public static $phpext = '.php';
-
-	public function __construct($s='')
+	public function __construct($s='', $tplext = '.tpl.html', $phpext = '.php')
 	{
-		$this->load($s);
+		$this->load($s, $tplext, $phpext);
 	}
 
-	/**
-	 * Append a file to the template; if a path or empty string is supplied, use a
-	 * default filename.
-	 * @param $s (string) file, path, or empty string.
-	 */
-	public function load($s='')
+	public function load($s='', $tplext = '.tpl.html', $phpext = '.php')
 	{
-	  if($s == '' or is_dir($s)) $s = $this->defaultFile($s);
+	  if($s == '' or is_dir($s)) $s = $this->defaultFile($s, $tplext, $phpext);
 		if(is_file($s)) $this->add(file_get_contents($s));
 	}
 
 	/**
-	 * Gets the default template filename using an optional path parameter. If no
-	 * path is provided, use the path to the calling php script.
-	 * The default name is calculated taking the calling script filename, and
-	 * swapping extensions/suffixes; i.e. self::$phpext for self::$tplext.
+	 * Returns the default template filename using an optional path parameter.
+	 *
+	 * The default filename is calculated taking the calling script filename, and
+	 * swapping the calling script's php extention for the tamplate extension.
+	 * i.e. strip $phpext and append $tplext
+	 * 
+	 * If no path is provided, use the current working directory at runtime (not
+	 * the path to this file).
+	 *
 	 * @param $d (string) path to look for default filename
+	 * @param $tplext (string) extension of default template names
+	 * @param $phpext (string) extension of default calling php script names
 	 * @return (string) a defualt path and filename
 	 */
-	protected function defaultFile($d)
+	protected function defaultFile($d='', $tplext = '.tpl.html', $phpext = '.php')
 	{
 		if($d == '') {
 			$d = './';
 		} elseif(substr($d, -1) != DIRECTORY_SEPARATOR) {
 			$d.= DIRECTORY_SEPARATOR;
 		}
-		return $d.basename($_SERVER['SCRIPT_NAME'], self::$phpext).self::$tplext;
+		return $d.basename($_SERVER['SCRIPT_NAME'], $phpext).$tplext;
 	}
 
 }
