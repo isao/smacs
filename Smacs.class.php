@@ -72,18 +72,39 @@ class SmacsFile extends Smacs
 
 class SmacsBuffer extends Smacs
 {
-	public function __construct($f=null)
+	public function __construct()
 	{
-		ob_start();
-		$this->bufferFile($f);
+		$files = func_get_args();
+		if(count($files)) {
+			foreach($files as $f) $this->bufferFile($f);
+		} else {
+			$this->bufferStart();
+		}
+	}
+
+	public function bufferStart()
+	{
+	  if(!ob_get_level()) ob_start();
 	}
 
 	public function bufferFile($f=null)
 	{
-		if(!is_null($f) and readfile($f) !== false) {
-			$this->out .= ob_get_contents($f);
+		if(!is_null($f)) {
+			$this->bufferStart();
+			include($f);
+			$this->bufferIn();
 			ob_end_clean();
 		}
+	}
+	
+	public function bufferIn()
+	{
+		$this->out .= ob_get_contents();
+	}
+
+	public function bufferEnd()
+	{
+		while(ob_get_level()) $this->out .= ob_end_clean();
 	}
 
 }
