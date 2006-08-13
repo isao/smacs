@@ -40,6 +40,12 @@ class Smacs
 		return str_replace($k, $v, $s);
 	}
 
+	public function filter($kv)
+	{
+	  require_once dirname(__FILE__).'/Sfilter.class.php';
+	  //@todo filter $kv using static methods in Sfilter class
+	}
+
 	public function addBraces($a)
 	{
 		foreach($a as $i) $b[] = self::$keyprefix.$i.self::$keysuffix;
@@ -99,11 +105,8 @@ class SmacsFile extends Smacs
 
 class SmacsBuffer extends Smacs
 {
-	public $oblevel;
-
 	public function __construct()
 	{
-		$this->oblevel = ob_get_level();
 		$files = func_get_args();
 		if(count($files)) {
 			foreach($files as $f) $this->bufferFile($f);
@@ -114,7 +117,7 @@ class SmacsBuffer extends Smacs
 
 	public function bufferStart()
 	{
-	  if($this->oblevel < ob_get_level()) ob_start();
+	  ob_start();
 	}
 
 	public function bufferFile($f=null)
@@ -122,19 +125,22 @@ class SmacsBuffer extends Smacs
 		if(!is_null($f)) {
 			$this->bufferStart();
 			include($f);
-			$this->bufferIn();
-			ob_end_clean();
+			$this->bufferEnd();
 		}
 	}
 
-	public function bufferIn()
+	public function bufferAdd()
 	{
 		$this->out .= ob_get_contents();
+		ob_clean();
 	}
 
 	public function bufferEnd()
 	{
-		while($this->oblevel < ob_get_level()) $this->out .= ob_end_clean();
+		while (ob_level()) {
+			$this->bufferAdd();
+			ob_end_clean();
+		}
 	}
 
 }
@@ -152,7 +158,7 @@ class Slice extends Smacs
 		$end = $end ? preg_quote($end) : $beg;
 		$this->rgx = "/$beg([\s\S]*?)$end/";
 		if(!preg_match($this->rgx, $this->context->out(), $m)) {
-			throw new Exception("slice pattern '$this->rgx' not found in template\n", E_USER_ERROR);
+			throw new Exception("slice pattern '$this->rgx' not found", E_USER_ERROR);
 		}
 		$this->mold = $m[1];
 		$this->out = '';
