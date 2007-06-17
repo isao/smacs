@@ -1,99 +1,88 @@
 <?php
-require_once '../Smacs.class.php';
-require_once 'PHPUnit2/Framework/TestCase.php';
+require_once '../Smacs.php';
+require_once 'PHPUnit/Framework/TestCase.php';
 
-class SmacsTest extends PHPUnit2_Framework_TestCase
-{
-	public $so;
-	public $tp;
-	public $kv;
-	
-	public function setUp()
+class SmacsTest extends PHPUnit_Framework_TestCase
+{	
+	public function testNoChangesIfNothingApplied()
 	{
-		$this->tp = 'title: {title}, footer: {footer}';//template
-		$this->kv = array("{title}"=>"t1's & t2's", "{footer}"=>"<footer>");//template data
-		$this->so = new Smacs($this->tp);
-	}
-	
-	public function testConstructor()
-	{
-		$this->assertEquals($this->tp, $this->so->out());
-	}
-	
-	public function testSet()
-	{
-		$newtp = "new stuff\n".$this->tp."\nmore new stuff";
-	  $this->so->set($newtp);
-		$this->assertEquals($newtp, $this->so->out());
+		$tp = 'title: {title}, footer: {footer}';
 
-		$newtp = '';
-	  $this->so->set($newtp);
-		$this->assertEquals($newtp, $this->so->out());
+		$so = new Smacs($tp);
+
+		$expected = $tp;
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
+	public function testApplyKvsToBase()
+	{
+		$tp = 'title:{title}, footer:{footer}';
+		$kv = array('{title}' => 'mytitle', '{footer}' => 'myfooter');
+
+		$so = new Smacs($tp);
+		$so->apply($kv);
+
+		$expected = 'title:mytitle, footer:myfooter';
+		$this->assertEquals($so->__toString(), $expected);	
 	}
 	
-	public function testMixIn()
+	public function testSliceOne()
 	{
-		$expected = "title: t1's & t2's, footer: <footer>";
-	  $this->so->mixIn($this->kv);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
+		$tp = 'title:{title} -row-[{a},{b},{c}]-row- footer:{footer}';
+		$kv1['{title}'] = 'mytitle';
+		$kv1['{footer}'] = 'myfooter';
+		$kv2['{a}'] = 'a1';
+		$kv2['{b}'] = 'b1';
+		$kv2['{c}'] = 'c1';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+		$so->slice('-row-')->apply($kv2);
+		
+		$expected = 'title:mytitle [a1,b1,c1] footer:myfooter';
+		$this->assertEquals($so->__toString(), $expected);	
 	}
 
-	public function testMixIn_SMACS_ENCODE_HTML()
+	public function testaNestedSlice()
 	{
-		$expected = "title: t1's &amp; t2's, footer: &lt;footer&gt;";
-	  $this->so->mixIn($this->kv, SMACS_ENCODE_HTML);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		
+		//the target slice is "sticky" now
+		//reset it w/ slice() to apply kvs to base template
+		$so->slice()->apply($kv1);
+
+		$expected = 'mytitle Z:[ 1 2 3 ]';
+		$this->assertEquals($so->__toString(), $expected);	
 	}
 
-	public function testMixIn_SMACS_ENCODE_SQL()
+	public function testNestedSlices()
 	{
-		$expected = "title: t1\'s & t2\'s, footer: <footer>";
-	  $this->so->mixIn($this->kv, SMACS_ENCODE_SQL);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
-	}
+		$tp = '{title} -row-{letter}:[-cell-{number}-cell-] -row-';
+		$kv1['{title}'] = 'mytitle';
 
-	public function testMixIn_SMACS_ADD_BRACES()
-	{
-		$expected = "title: t1's & t2's, footer: <footer>";
-		$kv = array("title"=>"t1's & t2's", "footer"=>"<footer>");//no key braces
-	  $this->so->mixIn($kv, SMACS_ADD_BRACES);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
-	}
+		$so = new Smacs($tp);
+		$so->apply($kv1);
 
-	public function testMixIn_SMACS_ENCODE_HTML_and_SQL()
-	{
-		$expected = "title: t1\'s &amp; t2\'s, footer: &lt;footer&gt;";
-	  $this->so->mixIn($this->kv, SMACS_ENCODE_SQL + SMACS_ENCODE_HTML);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
-	}
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->splice('-cell-');
 
-	public function testMixIn_SMACS_ENCODE_ALL()
-	{
-		$expected = "title: t1\'s &amp; t2\'s, footer: &lt;footer&gt;";
-		$kv = array("title"=>"t1's & t2's", "footer"=>"<footer>");//no key braces
-		$encoders = SMACS_ADD_BRACES + SMACS_ENCODE_HTML + SMACS_ENCODE_SQL;
-	  $this->so->mixIn($kv, $encoders);
-		$this->assertNotEquals($this->tp, $this->so->out());
-		$this->assertEquals($expected, $this->so->out());
-	}
+		$so->slice('-row-')->apply(array('{letter}'=>'Y'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>4));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>5));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>6));
 
-	public function textMixOut()
-	{
-		$expected = "title: t1's & t2's, footer: <footer>";
-	  $out = $this->so->mixOut($kv);
-		$this->assertNotEquals($this->tp, $out);
-		$this->assertEquals($expected, $out);	
+		$expected = 'mytitle Z:[123] Y:[456] ';
+		$this->assertEquals($so->__toString(), $expected);	
 	}
-
-	public function testToString()
-	{
-	  $this->assertEquals($this->tp, $this->so->__toString());
-	}
-
 }
 ?>

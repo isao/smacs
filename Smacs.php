@@ -1,180 +1,195 @@
 <?php
-if(!defined('SMACS_ENCODE_HTML')) define('SMACS_ENCODE_HTML', 2);
-if(!defined('SMACS_ENCODE_SQL'))  define('SMACS_ENCODE_SQL', 4);
-if(!defined('SMACS_ADD_BRACES'))  define('SMACS_ADD_BRACES', 8);
-
 class Smacs
 {
-	public static $keyprefix = '{';
-	public static $keysuffix = '}';
-	protected $out; ///!@var (string) template data
+	public $base;
+	public $slices;
+	protected $pointer;
+	protected $k_encoders;
+	protected $v_encoders;
 
-	public function __construct($s)
+	public function __construct($tpl)
 	{
-		$this->set($s);
+		$this->base       = new SmacsBase($tpl);
+		$this->slices     = array();
+		$this->pointer    = null;
+		$this->k_encoders = array();
+		$this->v_encoders = array();
 	}
 
-	public function set($s)
+	public function filters($callbacks, $for_values = true)
 	{
-		$this->out = $s;
+		if($for_values) {
+			$this->k_encoders = (array) $callbacks;
+		} else {
+			$this->v_encoders = (array) $callbacks;
+		}
+		return $this;
 	}
 
-	public function add($s)
+	public function slice($name = null)
 	{
-		$this->out .= $s;
+		$this->pointer = $name;
+		if(!isset($this->slices[$name]) && !is_null($name)) {
+			$this->slices[$name] = new SmacsSlice($name, $this->base);
+		}
+		return $this;
 	}
 
-	public function mixIn($kv, $encode=0)
+	public function apply(array $kvs)
 	{
-		$this->out = $this->mixOut($kv, $this->out, $encode);
+		$this->_theBuffer()->apply(array_keys($kvs), array_values($kvs));
 	}
 
-	public function mixOut($kv, $s, $encode=0)
+	public function splice($name)
 	{
-		$k = array_keys($kv);
-		if($encode & SMACS_ADD_BRACES)  $k = $this->addBraces($k);
-
-		$v = array_values($kv);
-		if($encode & SMACS_ENCODE_HTML) $v = array_map('htmlentities', $v);
-		if($encode & SMACS_ENCODE_SQL)  $v = array_map('addslashes',   $v);
-		return str_replace($k, $v, $s);
+		$this->_theBuffer()->splice($this->slices[$name]);
 	}
 
-	public function filter($kv)
+	public function __toString()
 	{
-	  require_once dirname(__FILE__).'/Sfilter.class.php';
-	  //@todo filter $kv using static methods in Sfilter class
+		$this->_spliceSlices();
+		return $this->base->buffer;
 	}
-
-	public function addBraces($a)
+	
+	protected function _theBuffer($name = false)
 	{
-		foreach($a as $i) $b[] = self::$keyprefix.$i.self::$keysuffix;
-		return $b;
+		if($name === false) {
+			$name = $this->pointer;
+		}
+		return is_null($name)
+			? $this->base
+			: $this->slices[$name];
 	}
-
-	public function out()
+	
+	protected function _spliceSlices()
 	{
-		return $this->out;
+		while($this->slices) {
+			$inner = array_pop($this->slices);
+			if($outer = end($this->slices)) {
+				$outer->splice($inner);
+			} else {
+				$this->base->splice($inner);
+			}
+		}
 	}
-
-	public function __toString() {
-		return $this->out();
+	
+	protected function _encode(array $arr, array $callbacks)
+	{
+		error_log('callback array:'.print_r($callbacks, 1));
+		foreach($callbacks as $callback) {
+			print "$callback, ".$arr['{table_name}'];
+			$arr = array_map($callback, $arr);
+		}
+		return $arr;
 	}
-
 }
 
+class SmacsBase
+{
+	public $buffer;
+	
+	public function __construct($str)
+	{
+		$this->buffer = $this->_stringCheck($str);
+	}
+
+	public function apply(array $keys, array $vals)
+	{
+		$this->buffer = str_replace($keys, $vals, $this->buffer);
+	}
+
+	public function splice(SmacsSlice $inner)
+	{
+		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer);
+		$inner->buffer = '';
+	}
+
+	protected function _stringCheck($str)
+	{
+		if(!is_string($str)) {
+			throw new Exception('expected string, not '.gettype($str));
+		} elseif(!strlen($str)) {
+			trigger_error('empty string', E_USER_NOTICE);
+		}
+		return $str;
+	}
+}
+
+class SmacsSlice extends SmacsBase
+{
+	public $name;
+	public $context;
+	public $pattern;
+
+	public function __construct($name, SmacsBase $base)
+	{
+		$this->name    = $this->_stringCheck($name);
+		$this->context = $this->_regex($name);
+		if(!preg_match($this->context, $base->buffer, $match)) {
+			throw new Exception("slice '$name' not found using expression {$this->context}", E_USER_ERROR);
+		}
+		$this->pattern = $match[1];
+		$this->buffer  = '';
+	}
+
+	public function apply(array $keys, array $vals)
+	{
+		$this->buffer .= str_replace($keys, $vals, $this->pattern);
+	}
+
+	protected function _regex($name)
+	{
+		$name = preg_quote($name);
+		return "/$name([\s\S]+)$name/i";
+	}
+}
+
+/**
+ * Specify a Smacs template from the filesystem, either explicitly, or based on
+ * the calling script's filename.
+ *
+ * @example load a template file explicitly
+ *   //from script "foo.php", loads "./tpl/bar.html"
+ *   $foo = new SmacsFile('./tpl/bar.html');
+ *
+ * @example load a template file implicitly
+ *   //from script "foo.php", loads "./foo.html"
+ *   $foo = new SmacsFile();
+ *
+ * @example load a template file implicitly, from a specified path
+ *   //in script "foo.php", loads "./tpl/foo.html"
+ *   $foo = new SmacsFile('./tpl');
+ */
 class SmacsFile extends Smacs
 {
-	public function __construct($s='', $tplext = '.tpl.html', $phpext = '.php')
-	{
-		$this->load($s, $tplext, $phpext);
-	}
-
-	public function load($s='', $tplext = '.tpl.html', $phpext = '.php')
-	{
-	  if($s == '' or is_dir($s)) $s = $this->defaultFile($s, $tplext, $phpext);
-		if(is_file($s)) $this->add(file_get_contents($s));
-	}
+	const PHP_EXT = '.php';
 
 	/**
-	 * Returns the default template filename using an optional path parameter.
-	 *
-	 * The default filename is calculated taking the calling script filename, and
-	 * swapping the calling script's php extention for the tamplate extension.
-	 * i.e. strip $phpext and append $tplext
-	 * 
-	 * If no path is provided, use the current working directory at runtime (not
-	 * the path to this file).
-	 *
-	 * @param $d (string) path to look for default filename
-	 * @param $tplext (string) extension of default template names
-	 * @param $phpext (string) extension of default calling php script names
-	 * @return (string) a defualt path and filename
+	 * @param (string) template filepath, or path, or empty string for implied
+	 * @param (string) if template location is implied, this is it's extension
 	 */
-	protected function defaultFile($d='', $tplext = '.tpl.html', $phpext = '.php')
+	public function __construct($tpl='', $ext='.html')
 	{
-		if($d == '') {
-			$d = './';
-		} elseif(substr($d, -1) != DIRECTORY_SEPARATOR) {
-			$d.= DIRECTORY_SEPARATOR;
-		}
-		return $d.basename($_SERVER['SCRIPT_NAME'], $phpext).$tplext;
+		parent::__construct($this->_getFileContents($tpl, $ext));
 	}
 
-}
-
-class SmacsBuffer extends Smacs
-{
-	public function __construct()
+	protected function _getFileContents($tpl, $ext)
 	{
-		$files = func_get_args();
-		if(count($files)) {
-			foreach($files as $f) $this->bufferFile($f);
+	  $ref = ($tpl=='' or is_dir($tpl)) ? $this->_impliedFile($tpl, $ext) : $tpl;
+		if(is_readable($ref)) {
+			return file_get_contents($ref);
 		} else {
-			$this->bufferStart();
+			throw new Exception("could not load file '$tpl' from '$ref'");
 		}
 	}
 
-	public function bufferStart()
+	protected function _impliedFile($dir, $ext)
 	{
-	  ob_start();
-	}
-
-	public function bufferFile($f=null)
-	{
-		if(!is_null($f)) {
-			$this->bufferStart();
-			include($f);
-			$this->bufferEnd();
+		if($dir == '') {
+			$dir = './';
+		} elseif(substr($dir, -1) != DIRECTORY_SEPARATOR) {
+			$dir .= DIRECTORY_SEPARATOR;
 		}
+		return $dir.basename($_SERVER['SCRIPT_NAME'], SmacsFile::PHP_EXT).$ext;
 	}
-
-	public function bufferAdd()
-	{
-		$this->out .= ob_get_contents();
-		ob_clean();
-	}
-
-	public function bufferEnd()
-	{
-		while (ob_level()) {
-			$this->bufferAdd();
-			ob_end_clean();
-		}
-	}
-
 }
-
-class Slice extends Smacs
-{
-	protected $context; ///!@var (object)
-	protected $rgx;     ///!@var (string) regular expression
-	protected $mold;    ///!@var (string) sub template, stays clean
-
-	public function __construct(Smacs &$context, $beg, $end=null)
-	{
-		$this->context = $context;
-		$beg = preg_quote($beg);
-		$end = $end ? preg_quote($end) : $beg;
-		$this->rgx = "/$beg([\s\S]*?)$end/";
-		if(!preg_match($this->rgx, $this->context->out(), $m)) {
-			throw new Exception("slice pattern '$this->rgx' not found", E_USER_ERROR);
-		}
-		$this->mold = $m[1];
-		$this->out = '';
-	}
-
-	public function mixAdd($kv, $entities=false)
-	{
-		$this->out.= $this->mixOut($kv, $this->mold, $entities);
-	}
-
-	public function splice()
-	{
-		$this->context->set(
-			preg_replace($this->rgx, $this->out(), $this->context->out())
-		);
-	}
-
-}
-?>
