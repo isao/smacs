@@ -1,5 +1,5 @@
 <?php
-require_once '../Smacs.php';
+require_once dirname(dirname(__FILE__)).'/Smacs.php';
 require_once 'PHPUnit/Framework/TestCase.php';
 
 class SmacsTest extends PHPUnit_Framework_TestCase
@@ -84,5 +84,16 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = 'mytitle Z:[123] Y:[456] ';
 		$this->assertEquals($so->__toString(), $expected);	
 	}
+
+	public function testFilters()
+	{
+		$tp = 'title:{title}, footer:{footer}';
+		$kv = array('{title}' => "o'title", '{footer}' => 'myfooter');
+
+		$so = new Smacs($tp);
+		$so->filter('addslashes')->apply($kv);
+
+		$expected = "title:o\\'title, footer:myfooter";
+		$this->assertEquals($so->__toString(), $expected);
+	}	
 }
-?>
