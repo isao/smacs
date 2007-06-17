@@ -14,6 +14,16 @@ class Smacs
 		$this->filters = array();
 	}
 
+	public function apply(array $kvs, $addbraces = false)
+	{
+		$keys = $addbraces ? $this->_addBraces($kvs) : array_keys($kvs);
+		$vals = array_values($kvs);
+		foreach($this->filters as $callback) {
+			$vals = array_map($callback, $vals);
+		}			
+		$this->_theBuffer()->apply($keys, $vals);
+	}
+
 	public function slice($name = null)
 	{
 		$this->pointer = $name;
@@ -23,25 +33,15 @@ class Smacs
 		return $this;
 	}
 
-	public function apply(array $kvs, $addbraces = false)
+	public function filter($filters)
 	{
-		$keys = $addbraces ? $this->addbraces($kvs) : array_keys($kvs);
-		$vals = array_values($kvs);
-		foreach($this->filters as $callback) {
-			$vals = array_map($callback, $vals);
-		}			
-		$this->_theBuffer()->apply($keys, $vals);
+		$this->filters = (array) $filters;
+		return $this;
 	}
 
 	public function splice($name)
 	{
 		$this->_theBuffer()->splice($this->slices[$name]);
-	}
-
-	public function filter($filters)
-	{
-		$this->filters = (array) $filters;
-		return $this;
 	}
 
 	public function __toString()
@@ -69,7 +69,7 @@ class Smacs
 		}
 	}
 
-	protected function _addbraces($kvs)
+	protected function _addBraces($kvs)
 	{
 		foreach($kvs as $k => $v) {
 			$keys[] = '{'.$k.'}';
