@@ -4,14 +4,14 @@ class Smacs
 	public $base;
 	public $slices;
 	protected $pointer;
-	protected $kfilter;
+	protected $filters;
 
 	public function __construct($tpl)
 	{
 		$this->base    = new SmacsBase($tpl);
 		$this->slices  = array();
 		$this->pointer = null;
-		$this->kfilter = array();
+		$this->filters = array();
 	}
 
 	public function slice($name = null)
@@ -23,11 +23,11 @@ class Smacs
 		return $this;
 	}
 
-	public function apply(array $kvs)
+	public function apply(array $kvs, $addbraces = false)
 	{
-		$keys = array_keys($kvs);
+		$keys = $addbraces ? $this->addbraces($kvs) : array_keys($kvs);
 		$vals = array_values($kvs);
-		foreach($this->kfilter as $callback) {
+		foreach($this->filters as $callback) {
 			$vals = array_map($callback, $vals);
 		}			
 		$this->_theBuffer()->apply($keys, $vals);
@@ -38,9 +38,9 @@ class Smacs
 		$this->_theBuffer()->splice($this->slices[$name]);
 	}
 
-	public function filter($kfilter)
+	public function filter($filters)
 	{
-		$this->kfilter = (array) $kfilter;
+		$this->filters = (array) $filters;
 		return $this;
 	}
 
@@ -67,6 +67,14 @@ class Smacs
 				$this->base->splice($inner);
 			}
 		}
+	}
+
+	protected function _addbraces($kvs)
+	{
+		foreach($kvs as $k => $v) {
+			$keys[] = '{'.$k.'}';
+		}
+		return $keys;
 	}
 }
 
