@@ -85,7 +85,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
-	public function testFilters()
+	public function testOneFilter()
 	{
 		$tp = 'title:{title}, footer:{footer}';
 		$kv = array('{title}' => "o'title", '{footer}' => 'myfooter');
@@ -96,4 +96,60 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = "title:o\\'title, footer:myfooter";
 		$this->assertEquals($so->__toString(), $expected);
 	}	
+
+	public function testTwoFilters()
+	{
+		$tp = 'title:{title}, footer:{footer}';
+		$kv = array('{title}' => "<o'title>", '{footer}' => 'myfooter');
+
+		$so = new Smacs($tp);
+		$so->filter(array('addslashes','htmlentities'))->apply($kv);
+
+		$expected = "title:&lt;o\\'title&gt;, footer:myfooter";
+		$this->assertEquals($so->__toString(), $expected);
+	}	
+
+	public function testUnusedSliceGetsDeleted()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-');
+		
+		$expected = 'mytitle ';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
+	public function testAllUnusedSliceGetsDeleted()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->slice('-cell-');;
+		
+		$expected = 'mytitle ';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
+	public function testUnusedReferencedSliceGetsDeleted()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->slice('-cell-');;
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+
+		$expected = 'mytitle Z:[ ]';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
 }

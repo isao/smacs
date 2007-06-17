@@ -60,11 +60,11 @@ class Smacs
 	protected function _spliceAll()
 	{
 		while($this->slices) {
-			$inner = array_pop($this->slices);
-			if($outer = end($this->slices)) {
+			$inner = array_pop($this->slices);//splice latest slice
+			if($outer = end($this->slices)) {//with next latest
 				$outer->splice($inner);
 			} else {
-				$this->base->splice($inner);
+				$this->base->splice($inner);//or base
 			}
 		}
 	}
@@ -134,7 +134,8 @@ class SmacsBase
 
 	public function apply(array $keys, array $vals)
 	{
-		$this->buffer = str_replace($keys, $vals, $this->buffer);
+		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
+		$this->_applyCheck($count);
 	}
 
 	public function splice(SmacsSlice $inner)
@@ -152,17 +153,22 @@ class SmacsBase
 		}
 		return $str;
 	}
+	
+	protected function _applyCheck($count)
+	{
+		if(!$count) {
+			trigger_error('apply() failed, no replacements found', E_USER_WARNING);
+		}
+	}
 }
 
 class SmacsSlice extends SmacsBase
 {
-	public $name;
 	public $context;
 	public $pattern;
 
 	public function __construct($name, SmacsBase $base)
 	{
-		$this->name = $this->_stringCheck($name);
 		$this->context = $this->_regex($name);
 		if(!preg_match($this->context, $base->buffer, $match)) {
 			throw new Exception("slice '$name' not found using expression {$this->context}", E_USER_ERROR);
@@ -173,12 +179,13 @@ class SmacsSlice extends SmacsBase
 
 	public function apply(array $keys, array $vals)
 	{
-		$this->buffer .= str_replace($keys, $vals, $this->pattern);
+		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
+		$this->_applyCheck($count);
 	}
 
 	protected function _regex($name)
 	{
-		$name = preg_quote($name);
+		$name = preg_quote($this->_stringCheck($name));
 		return "/$name([\s\S]+)$name/i";
 	}
 }
