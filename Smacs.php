@@ -20,7 +20,7 @@ class Smacs
 		$vals = array_values($kvs);
 		foreach($this->filters as $callback) {
 			$vals = array_map($callback, $vals);
-		}			
+		}
 		$this->_theBuffer()->apply($keys, $vals);
 	}
 
@@ -49,14 +49,14 @@ class Smacs
 		$this->_spliceAll();
 		return $this->base->buffer;
 	}
-	
+
 	protected function _theBuffer()
 	{
 		return is_null($this->pointer)
 			? $this->base
 			: $this->slices[$this->pointer];
 	}
-	
+
 	protected function _spliceAll()
 	{
 		while($this->slices) {
@@ -99,8 +99,10 @@ class SmacsFile extends Smacs
 	const PHP_EXT = '.php';
 
 	/**
-	 * @param (string) template filepath, or path, or empty string for implied
-	 * @param (string) if template location is implied, this is it's extension
+	 * @param (string) means either 1) fileref, 2) directory and implied filename,
+	 *  3) or empty string for implied filename in current directory
+	 * @param (string) if template filename is implied (that is, based on the
+	 *  calling script's filename), this is the template file's extension
 	 */
 	public function __construct($tpl='', $ext='.html')
 	{
@@ -108,15 +110,16 @@ class SmacsFile extends Smacs
 		if(is_readable($ref)) {
 			parent::__construct(file_get_contents($ref));
 		} else {
-			throw new Exception("could not load file '$tpl' from '$ref'");
+			throw new Exception(sprintf("could not load <%s> at <%s>", $tpl == '' ? 'implied' : $tpl, $ref));
 		}
 	}
 
 	protected function _impliedFile($dir, $ext)
 	{
 		if($dir == '') {
-			$dir = './';
-		} elseif(substr($dir, -1) != DIRECTORY_SEPARATOR) {
+			$dir = getcwd();
+		}
+		if(substr($dir, -1) != DIRECTORY_SEPARATOR) {
 			$dir .= DIRECTORY_SEPARATOR;
 		}
 		return $dir.basename($_SERVER['SCRIPT_NAME'], SmacsFile::PHP_EXT).$ext;
@@ -126,7 +129,7 @@ class SmacsFile extends Smacs
 class SmacsBase
 {
 	public $buffer;
-	
+
 	public function __construct($str)
 	{
 		$this->buffer = $this->_stringCheck($str);
@@ -153,11 +156,11 @@ class SmacsBase
 		}
 		return $str;
 	}
-	
+
 	protected function _applyCheck($count)
 	{
 		if(!$count) {
-			trigger_error('apply() failed, no replacements found', E_USER_WARNING);
+			trigger_error('apply() failed, no replacements made', E_USER_WARNING);
 		}
 	}
 }
@@ -173,7 +176,7 @@ class SmacsSlice extends SmacsBase
 		if(!preg_match($this->context, $base->buffer, $match)) {
 			throw new Exception("slice '$name' not found using expression {$this->context}", E_USER_ERROR);
 		}
-		$this->pattern = $match[1];
+		$this->pattern = $this->_stringCheck($match[1]);
 		$this->buffer  = '';
 	}
 

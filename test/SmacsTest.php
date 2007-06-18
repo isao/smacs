@@ -151,5 +151,4 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = 'mytitle Z:[ ]';
 		$this->assertEquals($so->__toString(), $expected);	
 	}
-
 }
