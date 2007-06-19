@@ -62,7 +62,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
-	public function testNestedSlices()
+	public function testSlicesNested2Deep()
 	{
 		$tp = '{title} -row-{letter}:[-cell-{number}-cell-] -row-';
 		$kv1['{title}'] = 'mytitle';
@@ -82,6 +82,35 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>6));
 
 		$expected = 'mytitle Z:[123] Y:[456] ';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
+	public function testSlicesNested3Deep()
+	{
+		$tp = '{title} -row-{letter}:[-cell-{number}-cell-] -row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->splice('-cell-');
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Y'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>4));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>5));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>6));
+		$so->slice('-row-')->splice('-cell-');
+
+		$so->slice('-row-')->apply(array('{letter}'=>'X'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>7));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>8));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>9));
+
+		$expected = 'mytitle Z:[123] Y:[456] X:[789] ';
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
@@ -123,7 +152,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
-	public function testAllUnusedSliceGetsDeleted()
+	public function testAllUnusedSlicesGetDeleted()
 	{
 		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
 		$kv1['{title}'] = 'mytitle';
@@ -131,7 +160,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tp);
 		$so->apply($kv1);
 
-		$so->slice('-row-')->slice('-cell-');;
+		$so->slice('-row-')->slice('-cell-');
 		
 		$expected = 'mytitle ';
 		$this->assertEquals($so->__toString(), $expected);	
@@ -151,4 +180,23 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = 'mytitle Z:[ ]';
 		$this->assertEquals($so->__toString(), $expected);	
 	}
+
+	public function testDelete()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->slice('-cell-')->delete('-cell-');
+		
+		$expected = 'mytitle ';
+		$this->assertEquals($so->__toString(), $expected);	
+
+	}
+
 }

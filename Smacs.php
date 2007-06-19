@@ -41,7 +41,13 @@ class Smacs
 
 	public function splice($name)
 	{
-		$this->_theBuffer()->splice($this->slices[$name]);
+		$this->_theBuffer()->absorbSlice($this->slices[$name]);
+	}
+
+	public function delete($name)
+	{
+		$this->_theBuffer()->deleteSlice($this->slices[$name]);
+		unset($this->slices[$name]);
 	}
 
 	public function __toString()
@@ -60,11 +66,11 @@ class Smacs
 	protected function _spliceAll()
 	{
 		while($this->slices) {
-			$inner = array_pop($this->slices);//splice latest slice
-			if($outer = end($this->slices)) {//with next latest
-				$outer->splice($inner);
+			$inner = array_pop($this->slices);//absorb latest slice
+			if($outer = end($this->slices)) {//into the next latest
+				$outer->absorbSlice($inner);
 			} else {
-				$this->base->splice($inner);//or base
+				$this->base->absorbSlice($inner);//or base
 			}
 		}
 	}
@@ -126,6 +132,10 @@ class SmacsFile extends Smacs
 	}
 }
 
+/**
+ * Helper object to represent simple, non-repeating, template data. Completely
+ * encapsulated within Smacs objects
+ */
 class SmacsBase
 {
 	public $buffer;
@@ -138,13 +148,19 @@ class SmacsBase
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
-		$this->_applyCheck($count);
+		return $this->_applyCheck($count);
 	}
 
-	public function splice(SmacsSlice $inner)
+	public function absorbSlice(SmacsSlice $inner)
 	{
-		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer);
+		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1);
 		$inner->buffer = '';
+	}
+
+	public function deleteSlice(SmacsSlice $inner)
+	{
+		$inner->buffer = '';
+		$this->absorbSlice($inner);
 	}
 
 	protected function _stringCheck($str)
@@ -162,9 +178,13 @@ class SmacsBase
 		if(!$count) {
 			trigger_error('apply() failed, no replacements made', E_USER_WARNING);
 		}
+		return (int) $count;
 	}
 }
 
+/**
+ * Helper object to represent sub-sections of templates that repeat (like rows).
+ */
 class SmacsSlice extends SmacsBase
 {
 	public $context;
@@ -183,7 +203,7 @@ class SmacsSlice extends SmacsBase
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
-		$this->_applyCheck($count);
+		return $this->_applyCheck($count);
 	}
 
 	protected function _regex($name)
