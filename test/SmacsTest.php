@@ -181,6 +181,21 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
+	public function testDeleteNoApply()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->delete('-row-');
+		
+		$expected = 'mytitle ';
+		$this->assertEquals($so->__toString(), $expected);	
+
+	}
+
 	public function testDelete()
 	{
 		$tp = '{title} -row-{letter}:[ -cell-{number} -cell-]-row-';

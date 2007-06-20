@@ -46,6 +46,11 @@ class Smacs
 
 	public function delete($name)
 	{
+		if(!isset($this->slices[$name])) {
+			$pointer = $this->pointer;
+			$this->slice($name);
+			$this->pointer = $pointer;
+		}
 		$this->_theBuffer()->deleteSlice($this->slices[$name]);
 		unset($this->slices[$name]);
 	}
