@@ -33,7 +33,7 @@ class Smacs
 		return $this;
 	}
 
-	public function filter($filters)
+	public function filter($filters = null)
 	{
 		$this->filters = (array) $filters;
 		return $this;
@@ -58,9 +58,11 @@ class Smacs
 
 	protected function _theBuffer()
 	{
-		return is_null($this->pointer)
+		$pointer = $this->pointer; 
+		$this->pointer = null;
+		return is_null($pointer)
 			? $this->base
-			: $this->slices[$this->pointer];
+			: $this->slices[$pointer];
 	}
 
 	protected function _spliceAll()

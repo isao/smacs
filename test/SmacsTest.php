@@ -189,12 +189,13 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tp);
 		$so->apply($kv1);
 
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
 		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
 		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
 		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
-		$so->slice('-row-')->slice('-cell-')->delete('-cell-');
+		$so->slice('-row-')->delete('-cell-');
 		
-		$expected = 'mytitle ';
+		$expected = 'mytitle Z:[ ]';
 		$this->assertEquals($so->__toString(), $expected);	
 
 	}
