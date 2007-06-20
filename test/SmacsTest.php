@@ -25,6 +25,19 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = 'title:mytitle, footer:myfooter';
 		$this->assertEquals($so->__toString(), $expected);	
 	}
+
+	public function testAppendToBase()
+	{
+		$tp = 'title:{title}, footer:{footer}';
+		$kv = array('{title}' => 'mytitle', '{footer}' => 'myfooter');
+
+		$so = new Smacs($tp);
+		$so->apply($kv);
+		$so->append(' -- additional footer');
+
+		$expected = 'title:mytitle, footer:myfooter -- additional footer';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
 	
 	public function testSliceOne()
 	{
@@ -85,6 +98,29 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 	}
 
+	public function testAppendToNestedSlice()
+	{
+		$tp = '{title} -row-{letter}:[-cell-{number}-cell-] -row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->splice('-cell-');
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Y'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>4));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>5));
+		$so->slice('-row-')->slice('-cell-')->append('*');
+
+		$expected = 'mytitle Z:[123] Y:[45*] ';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+	
 	public function testSlicesNested3Deep()
 	{
 		$tp = '{title} -row-{letter}:[-cell-{number}-cell-] -row-';
@@ -214,5 +250,4 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($so->__toString(), $expected);	
 
 	}
-
 }

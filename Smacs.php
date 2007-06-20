@@ -24,6 +24,11 @@ class Smacs
 		$this->_theBuffer()->apply($keys, $vals);
 	}
 
+	public function append($str)
+	{
+		$this->_theBuffer()->buffer .= $str;
+	}
+
 	public function slice($name = null)
 	{
 		$this->pointer = $name;
