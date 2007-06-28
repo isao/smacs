@@ -247,7 +247,59 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so->slice('-row-')->delete('-cell-');
 		
 		$expected = 'mytitle Z:[ ]';
-		$this->assertEquals($so->__toString(), $expected);	
+		$this->assertEquals($so->__toString(), $expected);
+	}
 
+	public function testDelete2()
+	{
+		$tp = '{title} -row-{letter}:[ -cell-{number}-cell- ]-del-DELETEME-del- -row-';
+		$kv1['{title}'] = 'mytitle';
+
+		$so = new Smacs($tp);
+		$so->apply($kv1);
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->delete('-del-');
+		
+		$expected = 'mytitle Z:[ 123 ] ';
+		$this->assertEquals($so->__toString(), $expected);	
+	}
+
+	public function testDelete3()
+	{
+		$tp = '-row-{letter}:-del-
+
+		DELETEME
+
+		-del-[ -cell-{number}-cell- ] -row-';
+
+		$so = new Smacs($tp);
+
+		$so->slice('-row-')->apply(array('{letter}'=>'Z'));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>1));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>2));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>3));
+		$so->slice('-row-')->delete('-del-');
+		$so->slice('-row-')->splice('-cell-');
+
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>4));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>5));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>6));
+		$so->slice('-row-')->apply(array('{letter}'=>'Y'));
+		$so->slice('-row-')->delete('-del-');
+		$so->slice('-row-')->splice('-cell-');
+
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>7));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>8));
+		$so->slice('-row-')->slice('-cell-')->apply(array('{number}'=>9));
+		$so->slice('-row-')->apply(array('{letter}'=>'X'));
+		$so->slice('-row-')->delete('-del-');
+		$so->slice('-row-')->splice('-cell-');
+
+		$expected = 'Z:[ 123 ] Y:[ 456 ] X:[ 789 ] ';
+		$this->assertEquals($so->__toString(), $expected);	
 	}
 }
