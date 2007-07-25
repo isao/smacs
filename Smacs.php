@@ -1,8 +1,8 @@
 <?php
 class Smacs
 {
-	public $base;
-	public $slices;
+	protected $base;
+	protected $slices;
 	protected $pointer;
 	protected $filters;
 
@@ -14,19 +14,15 @@ class Smacs
 		$this->filters = array();
 	}
 
-	public function apply(array $kvs, $addbraces = false)
+	public function apply(array $kvs)
 	{
-		$keys = $addbraces ? $this->_addBraces($kvs) : array_keys($kvs);
+		$keys = array_keys($kvs);
 		$vals = array_values($kvs);
 		foreach($this->filters as $callback) {
 			$vals = array_map($callback, $vals);
 		}
-		$this->_theBuffer()->apply($keys, $vals);
-	}
-
-	public function append($str)
-	{
-		$this->_theBuffer()->buffer .= $str;
+		$this->_buffer()->apply($keys, $vals);
+		$this->filters = array();
 	}
 
 	public function slice($name = null)
@@ -46,7 +42,7 @@ class Smacs
 
 	public function splice($name)
 	{
-		$this->_theBuffer()->absorbSlice($this->slices[$name]);
+		$this->_buffer()->absorbSlice($this->slices[$name]);
 	}
 
 	public function delete($name)
@@ -56,26 +52,11 @@ class Smacs
 			$this->slice($name);
 			$this->pointer = $pointer;
 		}
-		$this->_theBuffer()->deleteSlice($this->slices[$name]);
+		$this->_buffer()->deleteSlice($this->slices[$name]);
 		unset($this->slices[$name]);
 	}
 
 	public function __toString()
-	{
-		$this->_spliceAll();
-		return $this->base->buffer;
-	}
-
-	protected function _theBuffer()
-	{
-		$pointer = $this->pointer; 
-		$this->pointer = null;
-		return is_null($pointer)
-			? $this->base
-			: $this->slices[$pointer];
-	}
-
-	protected function _spliceAll()
 	{
 		while($this->slices) {
 			$inner = array_pop($this->slices);//absorb latest slice
@@ -85,14 +66,16 @@ class Smacs
 				$this->base->absorbSlice($inner);//or base
 			}
 		}
+		return $this->base->buffer;
 	}
 
-	protected function _addBraces($kvs)
+	protected function _buffer()
 	{
-		foreach($kvs as $k => $v) {
-			$keys[] = '{'.$k.'}';
-		}
-		return $keys;
+		$pointer = $this->pointer; 
+		$this->pointer = null;
+		return is_null($pointer)
+			? $this->base
+			: $this->slices[$pointer];
 	}
 }
 
@@ -110,18 +93,12 @@ class Smacs
  *
  * @example load a template file implicitly, from a specified path
  *   //in script "foo.php", loads "./tpl/foo.html"
- *   $foo = new SmacsFile('./tpl');
+ *   $foo = new SmacsFile('./tpl/');
  */
 class SmacsFile extends Smacs
 {
 	const PHP_EXT = '.php';
 
-	/**
-	 * @param (string) means either 1) fileref, 2) directory and implied filename,
-	 *  3) or empty string for implied filename in current directory
-	 * @param (string) if template filename is implied (that is, based on the
-	 *  calling script's filename), this is the template file's extension
-	 */
 	public function __construct($tpl='', $ext='.html')
 	{
 	  $ref = ($tpl=='' or is_dir($tpl)) ? $this->_impliedFile($tpl, $ext) : $tpl;
@@ -146,7 +123,7 @@ class SmacsFile extends Smacs
 
 /**
  * Helper object to represent simple, non-repeating, template data. Completely
- * encapsulated within Smacs objects
+ * encapsulated within Smacs and SmacsSlice objects
  */
 class SmacsBase
 {
@@ -154,13 +131,13 @@ class SmacsBase
 
 	public function __construct($str)
 	{
-		$this->buffer = $this->_stringCheck($str);
+		$this->buffer = $this->_checkString($str);
 	}
 
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
-		return $this->_applyCheck($count);
+		return $this->_checkCount($count);
 	}
 
 	public function absorbSlice(SmacsSlice $inner)
@@ -175,7 +152,7 @@ class SmacsBase
 		$this->absorbSlice($inner);
 	}
 
-	protected function _stringCheck($str)
+	protected function _checkString($str)
 	{
 		if(!is_string($str)) {
 			throw new Exception('expected string, not '.gettype($str));
@@ -185,7 +162,7 @@ class SmacsBase
 		return $str;
 	}
 
-	protected function _applyCheck($count)
+	protected function _checkCount($count)
 	{
 		if(!$count) {
 			trigger_error('apply() failed, no replacements made', E_USER_WARNING);
@@ -208,19 +185,19 @@ class SmacsSlice extends SmacsBase
 		if(!preg_match($this->context, $base->buffer, $match)) {
 			throw new Exception("slice '$name' not found using expression {$this->context}", E_USER_ERROR);
 		}
-		$this->pattern = $this->_stringCheck($match[1]);
+		$this->pattern = $this->_checkString($match[1]);
 		$this->buffer  = '';
 	}
 
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
-		return $this->_applyCheck($count);
+		return $this->_checkCount($count);
 	}
 
 	protected function _regex($name)
 	{
-		$name = preg_quote($this->_stringCheck($name));
-		return "/$name([\s\S]+)$name/i";
+		$name = preg_quote($this->_checkString($name));
+		return "/$name([\s\S]+)$name/";
 	}
 }

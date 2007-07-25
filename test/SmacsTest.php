@@ -34,42 +34,7 @@ TPL;
 		$so = new Smacs($tpl);
 		$so->apply($kv);
 
-		$this->assertEquals($so->__toString(), $expected);
-	}
-
-	public function testAppendToBase()
-	{
-		$tpl = <<<TPL
-
-			{title}
-			==============
-			{body}
-			--------------
-			{footer}
-
-TPL;
-
-		$kv = array(
-			'{title}' => 'Smacs*',
-			'{body}' => 'smacs is simple',
-			'{footer}' => 'page 1');
-
-		$expected = <<<TPL
-
-			Smacs*
-			==============
-			smacs is simple
-			--------------
-			page 1
-
-			* Seperate Code And Markup Simply
-TPL;
-
-		$so = new Smacs($tpl);
-		$so->apply($kv);
-		$so->append("\n\t\t\t* Seperate Code And Markup Simply");
-
-		$this->assertEquals($so->__toString(), $expected);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
 	public function testSingleFilter()
@@ -103,7 +68,7 @@ TPL;
 		$so = new Smacs($tpl);
 		$so->filter('htmlentities')->apply($kv);
 
-		$this->assertEquals($so->__toString(), $expected);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
 	public function testMultipleFilters()
@@ -139,7 +104,7 @@ TPL;
 		$so = new Smacs($tpl);
 		$so->filter($filters)->apply($kv);
 
-		$this->assertEquals($so->__toString(), $expected);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
 	public function testUserFunctionFilter()
@@ -162,61 +127,28 @@ TPL;
 
 		$expected = <<<TPL
 
-			.prevent 'XSS'
+			CESAGXFF
 			==============
-			.encode "html entities" like &lt;&amp;&gt; in markup
+			RAXGGZYAGGFYXAZEXC
 			--------------
-			.page 1
+			CW
 
 TPL;
 
 		$so = new Smacs($tpl);
 		$so->filter('my_filter')->apply($kv);
 
-		$this->assertEquals($so->__toString(), $expected);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testAddBracesToKeys()
+	public function foo()
 	{
-		$tpl = <<<TPL
-
-			{title}
-			==============
-			{body}
-			--------------
-			{footer}
-
-TPL;
-
-		//no braces in keys
-		$kv = array(
-			'title' => 'Smacs',
-			'body' => 'smacs is simple',
-			'footer' => 'page 1');
-
-		$expected = <<<TPL
-
-			Smacs
-			==============
-			smacs is simple
-			--------------
-			page 1
-
-TPL;
-
-		$so = new Smacs($tpl);
-		$so->apply($kv, true);//add braces to each key in supplied assoc array
-
-		$this->assertEquals($so->__toString(), $expected);
+	  
 	}
-
 }
 
 
 function my_filter($val)
 {
-	return '.'.htmlentities($val, ENT_NOQUOTES);
+	return str_rot13(metaphone($val));
 }
-
-
-
