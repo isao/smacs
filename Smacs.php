@@ -1,10 +1,10 @@
 <?php
 class Smacs
 {
-	protected $base;
-	protected $slices;
-	protected $pointer;
-	protected $filters;
+	protected $base;		//SmacsBase obj
+	protected $slices;	//array of SmacsSlice objs by slice mark
+	protected $pointer;	//mark of active SmacsSlice obj in $slices array
+	protected $filters;	//array of callbacks for array_map()
 
 	public function __construct($tpl)
 	{
@@ -25,11 +25,11 @@ class Smacs
 		$this->filters = array();
 	}
 
-	public function slice($name = null)
+	public function slice($mark)
 	{
-		$this->pointer = $name;
-		if(!is_null($name) && !isset($this->slices[$name])) {
-			$this->slices[$name] = new SmacsSlice($name, $this->base);
+		$this->pointer = $mark;
+		if(!isset($this->slices[$mark])) {
+			$this->slices[$mark] = new SmacsSlice($mark, $this->base);
 		}
 		return $this;
 	}
@@ -40,20 +40,20 @@ class Smacs
 		return $this;
 	}
 
-	public function splice($name)
+	public function splice($mark)
 	{
-		$this->_buffer()->absorbSlice($this->slices[$name]);
+		$this->_buffer()->absorbSlice($this->slices[$mark]);
 	}
 
-	public function delete($name)
+	public function delete($mark)
 	{
-		if(!isset($this->slices[$name])) {
+		if(!isset($this->slices[$mark])) {
 			$pointer = $this->pointer;
-			$this->slice($name);
+			$this->slice($mark);
 			$this->pointer = $pointer;
 		}
-		$this->_buffer()->deleteSlice($this->slices[$name]);
-		unset($this->slices[$name]);
+		$this->_buffer()->deleteSlice($this->slices[$mark]);
+		unset($this->slices[$mark]);
 	}
 
 	public function __toString()
@@ -179,11 +179,11 @@ class SmacsSlice extends SmacsBase
 	public $context;
 	public $pattern;
 
-	public function __construct($name, SmacsBase $base)
+	public function __construct($mark, SmacsBase $base)
 	{
-		$this->context = $this->_regex($name);
+		$this->context = $this->_regex($mark);
 		if(!preg_match($this->context, $base->buffer, $match)) {
-			throw new Exception("slice '$name' not found using expression {$this->context}", E_USER_ERROR);
+			throw new Exception("slice '$mark' not found using expression {$this->context}", E_USER_ERROR);
 		}
 		$this->pattern = $this->_checkString($match[1]);
 		$this->buffer  = '';
@@ -195,9 +195,9 @@ class SmacsSlice extends SmacsBase
 		return $this->_checkCount($count);
 	}
 
-	protected function _regex($name)
+	protected function _regex($mark)
 	{
-		$name = preg_quote($this->_checkString($name));
-		return "/$name([\s\S]+)$name/";
+		$mark = '\s*'.preg_quote($this->_checkString($mark)).'\s*';
+		return "/$mark([\s\S]+)$mark/";
 	}
 }
