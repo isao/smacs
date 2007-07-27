@@ -6,6 +6,7 @@
  * @var $pointer string is index of $buffers associative array
  * @var $buffers array of SmacsSlice objects
  * @var $filters array of callbacks to operate on replacement values
+ * @see SmacsFile
  */
 class Smacs
 {
@@ -51,17 +52,12 @@ class Smacs
 		return $this;
 	}
 
-	public function splice($mark)
-	{
-		$this->_buffer()->absorb($this->buffers[$mark]);
-	}
-
 	public function delete($mark = '')
 	{
 		if(strlen($mark) && !isset($this->buffers[$mark])) {
 			$this->slice($mark);
 		}
-		$this->base->remove($this->buffers[$this->pointer]);
+		$this->base->prune($this->buffers[$this->pointer]);
 		unset($this->buffers[$this->pointer]);
 	}
 
@@ -70,9 +66,9 @@ class Smacs
 		while($this->buffers) {
 			$inner = array_pop($this->buffers);//absorb latest slice
 			if($outer = end($this->buffers)) {//into the next latest
-				$outer->absorb($inner);
+				$outer->splice($inner);
 			} else {
-				$this->base->absorb($inner);//or base
+				$this->base->splice($inner);//or base
 			}
 		}
 		return $this->base->buffer;
@@ -143,10 +139,13 @@ class SmacsBase
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
-		return $this->_checkCount($count);
+		if(!$count) {
+			trigger_error('apply() failed, no replacements made', E_USER_WARNING);
+		}
+		return $count;
 	}
 
-	public function absorb(SmacsSlice $inner)
+	public function splice(SmacsSlice $inner)
 	{
 		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
 		if(!$ok) {
@@ -155,10 +154,10 @@ class SmacsBase
 		$inner->buffer = '';
 	}
 
-	public function remove(SmacsBase $inner)
+	public function prune(SmacsBase $inner)
 	{
 		$inner->buffer = '';
-		$this->absorb($inner);
+		$this->splice($inner);
 	}
 
 	protected function _checkString($str)
@@ -169,14 +168,6 @@ class SmacsBase
 			trigger_error('empty string', E_USER_NOTICE);
 		}
 		return $str;
-	}
-
-	protected function _checkCount($count)
-	{
-		if(!$count) {
-			trigger_error('apply() failed, no replacements made', E_USER_WARNING);
-		}
-		return (int) $count;
 	}
 }
 
@@ -195,7 +186,7 @@ class SmacsSlice extends SmacsBase
 		$this->context = $this->_regex($mark);
 		if(preg_match($this->context, $base->buffer, $match)) {
 			$this->pattern = $this->_checkString($match[1]);
-			$this->buffer  = '';
+			$this->buffer = '';
 		} else {
 			trigger_error("slice '$mark' not found", E_USER_WARNING);
 		}
@@ -204,12 +195,13 @@ class SmacsSlice extends SmacsBase
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
-		return $this->_checkCount($count);
+		return $count;
 	}
 
 	protected function _regex($mark)
 	{
-		$mark = preg_quote($this->_checkString($mark));
-		return "/[ \t]*{$mark}([\s\S]+){$mark}[\t ]*\s?/";
+		$mark = preg_quote($this->_checkString($mark), '/');
+		return "/$mark([\s\S]+)$mark/";
 	}
 }
+
