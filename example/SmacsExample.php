@@ -9,8 +9,8 @@ $pagedata['{title}'] = 'example smacs page';
 $pagedata['{footer}'] = 'etherjar.com';
 $pagedata['{table_name}'] = 'sums';
 
-if(!empty($pagedata['{msg}'])) {
-	$smacs->delete('<!-- special_message -->');
+if(empty($pagedata['{msg}'])) {
+	$smacs->slice('<!-- special_message -->')->delete();
 }
 
 //row data

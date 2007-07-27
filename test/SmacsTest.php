@@ -37,7 +37,7 @@ TPL;
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testSingleFilter()
+	public function testFilterProccessesReplacementValues()
 	{
 
 		$tpl = <<<TPL
@@ -71,7 +71,7 @@ TPL;
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testMultipleFilters()
+	public function testMultipleFiltersCanBeSpecified()
 	{
 
 		$tpl = <<<TPL
@@ -85,11 +85,9 @@ TPL;
 TPL;
 
 		$kv = array(
-			'{title}' => "prevent \\'XSS\\'",
-			'{body}' => 'encode \\"html entities\\" like <&>',
-			'{footer}' => '\\\\page 1\\\\');
-
-		$filters = array('stripslashes', 'htmlentities');
+			'{title}' => "prevent 'XSS'       ",
+			'{body}' => '  encode "html entities" like <&>',
+			'{footer}' => '    page 1   ');
 
 		$expected = <<<TPL
 
@@ -97,17 +95,17 @@ TPL;
 			==============
 			encode &quot;html entities&quot; like &lt;&amp;&gt;
 			--------------
-			\page 1\
+			page 1
 
 TPL;
 
 		$so = new Smacs($tpl);
-		$so->filter($filters)->apply($kv);
+		$so->filter('trim', 'htmlentities')->apply($kv);
 
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testUserFunctionFilter()
+	public function testUseYourOwnFilterFunctionOrStaticMethod()
 	{
 
 		$tpl = <<<TPL
@@ -137,18 +135,31 @@ TPL;
 
 		$so = new Smacs($tpl);
 		$so->filter('my_filter')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
 
+		$so = new Smacs($tpl);
+		$so->filter(array('MyFilter', 'staticFilter'))->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function foo()
-	{
-	  
-	}
 }
 
 
 function my_filter($val)
 {
 	return str_rot13(metaphone($val));
+}
+
+class MyFilter
+{
+	//using non-static functions in a callback throws E_STRICT notices
+	public function filter($val)
+	{
+		return str_rot13(metaphone($val));
+	}
+
+	static public function staticFilter($val)
+	{
+		return str_rot13(metaphone($val));
+	}
 }
