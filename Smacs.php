@@ -53,7 +53,7 @@ class Smacs
 
 	public function splice($mark)
 	{
-		$this->_buffer()->absorbSlice($this->buffers[$mark]);
+		$this->_buffer()->absorb($this->buffers[$mark]);
 	}
 
 	public function delete($mark = '')
@@ -61,7 +61,7 @@ class Smacs
 		if(strlen($mark) && !isset($this->buffers[$mark])) {
 			$this->slice($mark);
 		}
-		$this->base->deleteSlice($this->buffers[$this->pointer]);
+		$this->base->remove($this->buffers[$this->pointer]);
 		unset($this->buffers[$this->pointer]);
 	}
 
@@ -70,9 +70,9 @@ class Smacs
 		while($this->buffers) {
 			$inner = array_pop($this->buffers);//absorb latest slice
 			if($outer = end($this->buffers)) {//into the next latest
-				$outer->absorbSlice($inner);
+				$outer->absorb($inner);
 			} else {
-				$this->base->absorbSlice($inner);//or base
+				$this->base->absorb($inner);//or base
 			}
 		}
 		return $this->base->buffer;
@@ -95,11 +95,9 @@ class Smacs
  * @example load a template file explicitly
  *   //from script "foo.php", loads "./tpl/bar.html"
  *   $foo = new SmacsFile('./tpl/bar.html');
- *
  * @example load a template file implicitly
  *   //from script "foo.php", loads "./foo.html"
  *   $foo = new SmacsFile();
- *
  * @example load a template file implicitly, from a specified path
  *   //in script "foo.php", loads "./tpl/foo.html"
  *   $foo = new SmacsFile('./tpl/');
@@ -131,6 +129,7 @@ class SmacsFile extends Smacs
 /**
  * Helper object to represent simple, non-repeating, template data. Completely
  * encapsulated within Smacs and SmacsSlice objects
+ * @var $buffer string template containing placeholders and markers
  */
 class SmacsBase
 {
@@ -147,19 +146,19 @@ class SmacsBase
 		return $this->_checkCount($count);
 	}
 
-	public function absorbSlice(SmacsSlice $inner)
+	public function absorb(SmacsSlice $inner)
 	{
 		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
 		if(!$ok) {
-			trigger_error('splice failed', E_USER_WARNING);
+			trigger_error('slice operation failed', E_USER_WARNING);
 		}
 		$inner->buffer = '';
 	}
 
-	public function deleteSlice(SmacsBase $inner)
+	public function remove(SmacsBase $inner)
 	{
 		$inner->buffer = '';
-		$this->absorbSlice($inner);
+		$this->absorb($inner);
 	}
 
 	protected function _checkString($str)
@@ -183,6 +182,8 @@ class SmacsBase
 
 /**
  * Helper object to represent sub-sections of templates that repeat (like rows).
+ * @var $context string regex
+ * @var $pattern string text matching $pattern in $base
  */
 class SmacsSlice extends SmacsBase
 {
@@ -208,7 +209,7 @@ class SmacsSlice extends SmacsBase
 
 	protected function _regex($mark)
 	{
-		$mark = '\s*'.preg_quote($this->_checkString($mark)).'\s*';
-		return "/$mark([\s\S]+)$mark/";
+		$mark = preg_quote($this->_checkString($mark));
+		return "/[ \t]*{$mark}([\s\S]+){$mark}[\t ]*\s?/";
 	}
 }
