@@ -13,7 +13,7 @@ class Smacs
 {
 	protected $base;
 	protected $pointer;
-	protected $nodes;
+	public $nodes;
 	protected $filters;
 
 	public function __construct($tpl)
@@ -28,11 +28,10 @@ class Smacs
 	{
 		$keys = array_keys($kvs);
 		$vals = array_values($kvs);
-		foreach($this->filters as $callback) {
+		while($callback = array_pop($this->filters)) {
 			$vals = array_map($callback, $vals);
 		}
 		$this->_buffer()->apply($keys, $vals);
-		$this->filters = array();
 	}
 
 	public function append($str)
@@ -53,20 +52,22 @@ class Smacs
 		}
 		if(!isset($this->nodes[$mark])) {
 			$this->nodes[$mark] = new SmacsSlice($mark, $this->base);
+			$this->nodes[$mark]->container($this->pointer);
 		}
 		$this->pointer = $mark;
 		return $this;
 	}
 	
-	public function splice()
+	public function splice($str = '')
 	{
-		$this->_buffer()->splice();
+		$this->_buffer()->splice($str);
 	}
 
 	public function delete()
 	{
 		$this->base->prune($this->nodes[$this->pointer]);
 		unset($this->nodes[$this->pointer]);
+		$this->pointer = '';
 	}
 
 	public function __toString()
@@ -206,6 +207,11 @@ class SmacsSlice extends SmacsBase
 			throw new Exception("slice '$mark' not found", E_USER_WARNING);
 		}
 	}
+	
+	public function container($mark)
+	{
+	  $this->containermark = $mark;
+	}
 
 	public function apply(array $keys, array $vals)
 	{
@@ -213,9 +219,9 @@ class SmacsSlice extends SmacsBase
 		return $count;
 	}
 
-	public function splice()
+	public function splice($str)
 	{
-		$this->buffer .= $this->pattern;
+		$this->buffer .= $this->pattern.$str;
 	}
 
 	protected function _regex($mark)
