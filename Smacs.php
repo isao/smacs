@@ -1,25 +1,29 @@
 <?php
 /**
- * Smacs - aggregates encapsulated template objects
+ * Smacs - separate markup and code simply.
  *
  * @var $base    object class SmacsBase, represents the base/backing template
- * @var $pointer string slice marker, the key of current node in $nodes array
+ * @var $pointer string slice marker, the key active nodes in $nodes array
  * @var $nodes   array of SmacsSlice objects, indexed by slice marker strings
  * @var $filters array of callbacks to operate on replacement values
- * @see SmacsFile extends this class to accept explicit or implicit template 
- *  file references to use as the base template backing buffer.
+ *
+ * @see SmacsFile  extends Smacs to populate base template from a file using
+ *                 either explicit or implicit file or path references
+ * @see SmacsOb    extends Smacs to populate base template from output buffer
+ * @see SmacsBase  is an encapsulated representation of a base template
+ * @see SmacsSlice extends SmacsBase to represent a template subsection
  */
 class Smacs
 {
-	protected $base;
-	protected $pointer;
+	public $base;
+	public $pointer;
 	public $nodes;
-	protected $filters;
+	public $filters;
 
 	public function __construct($tpl)
 	{
 		$this->base    = new SmacsBase($tpl);
-		$this->pointer = '';
+		$this->pointer = array();
 		$this->nodes   = array();
 		$this->filters = array();
 	}
@@ -31,12 +35,12 @@ class Smacs
 		while($callback = array_pop($this->filters)) {
 			$vals = array_map($callback, $vals);
 		}
-		$this->_buffer()->apply($keys, $vals);
+		$this->_lastNode()->apply($keys, $vals);
 	}
 
 	public function append($str)
 	{
-		$this->_buffer()->buffer .= $str;
+		$this->_lastNode()->buffer .= $str;
 	}
 
 	public function filter(/* any number of arguments */)
@@ -48,46 +52,39 @@ class Smacs
 	public function slice($mark)
 	{
 		if(!strlen($mark)) {
-			throw new Exception('slice marker empty', E_USER_ERROR);
+			throw new Exception('slice marker not specified', E_USER_ERROR);
 		}
 		if(!isset($this->nodes[$mark])) {
 			$this->nodes[$mark] = new SmacsSlice($mark, $this->base);
-			$this->nodes[$mark]->container($this->pointer);
 		}
-		$this->pointer = $mark;
+		$this->pointer[] = $mark;
 		return $this;
 	}
 	
-	public function splice($str = '')
+	public function absorb()
 	{
-		$this->_buffer()->splice($str);
+		$slice = $this->_lastNode(true);
+		$base  = $this->_lastNode();
+		$base->absorb($slice);
 	}
 
 	public function delete()
 	{
-		$this->base->prune($this->nodes[$this->pointer]);
-		unset($this->nodes[$this->pointer]);
-		$this->pointer = '';
+		$pointer = array_pop($this->pointer);
+		$this->base->delete($this->nodes[$pointer]);
+		unset($this->nodes[$pointer]);
 	}
 
 	public function __toString()
 	{
-		while($this->nodes) {
-			$inner = array_pop($this->nodes);//absorb latest slice
-			if($outer = end($this->nodes)) {//into the next latest
-				$outer->absorb($inner);
-			} else {
-				$this->base->absorb($inner);//or base
-			}
-		}
 		return $this->base->buffer;
 	}
-
-	protected function _buffer()
+	
+	protected function _lastNode($preserve_stack = false)
 	{
-		$pointer = $this->pointer; 
-		$this->pointer = '';//reset pointer, so it must be specified each time
-		return strlen($pointer)
+		$pointer = array_pop($this->pointer);
+		if(!$preserve_stack) $this->pointer = array();
+		return $pointer
 			? $this->nodes[$pointer]
 			: $this->base;
 	}
@@ -131,6 +128,19 @@ class SmacsFile extends Smacs
 	}
 }
 
+class SmacsOb extends Smacs
+{
+	public function __construct()
+	{
+	  ob_start();		
+	}
+
+	public function endOb()
+	{
+		parent::__construct(ob_get_flush());
+	}
+}
+
 /**
  * Helper object to represent simple, non-repeating, template data. Completely
  * encapsulated within Smacs and SmacsSlice objects
@@ -148,14 +158,9 @@ class SmacsBase
 
 	public function apply(array $keys, array $vals)
 	{
-		if(!$keys || !$vals) {
-			trigger_error('apply() key/values empty', E_USER_WARNING);
-			$count = 0;
-		} else {
-			$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
-			if(!$count) {
-				trigger_error('apply() found no replacements', E_USER_WARNING);
-			}
+		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
+		if(!$count) {
+			trigger_error('apply() found no replacements', E_USER_WARNING);
 		}
 		return $count;
 	}
@@ -164,12 +169,12 @@ class SmacsBase
 	{
 		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
 		if(!$ok) {
-			trigger_error('slice operation failed', E_USER_WARNING);
+			trigger_error('slice not absorbed', E_USER_WARNING);
 		}
 		$inner->buffer = '';
 	}
 
-	public function prune(SmacsBase $inner)
+	public function delete(SmacsBase $inner)
 	{
 		$inner->buffer = '';
 		$this->absorb($inner);
@@ -189,13 +194,13 @@ class SmacsBase
 /**
  * Helper object to represent sub-sections of templates that repeat (like rows).
  * 
- * @var $context string regex that obtains $pattern from $base 
+ * @var $context string regex that obtains $pattern from $base->buffer 
  * @var $pattern string text containing placeholders, used against each apply()
  */
 class SmacsSlice extends SmacsBase
 {
-	public $context;
-	public $pattern;
+	public $context;//regex
+	public $pattern;//read-only template
 
 	public function __construct($mark, SmacsBase $base)
 	{
@@ -207,11 +212,6 @@ class SmacsSlice extends SmacsBase
 			throw new Exception("slice '$mark' not found", E_USER_WARNING);
 		}
 	}
-	
-	public function container($mark)
-	{
-	  $this->containermark = $mark;
-	}
 
 	public function apply(array $keys, array $vals)
 	{
@@ -219,15 +219,9 @@ class SmacsSlice extends SmacsBase
 		return $count;
 	}
 
-	public function splice($str)
-	{
-		$this->buffer .= $this->pattern.$str;
-	}
-
 	protected function _regex($mark)
 	{
-		$mark = preg_quote($this->_checkString($mark), '/');
-		return "/$mark([\s\S]+)$mark/";
+		$mark = preg_quote($this->_checkString($mark));
+		return "/$mark([\s\S]*)$mark/";
 	}
 }
-

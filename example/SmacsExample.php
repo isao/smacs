@@ -1,26 +1,29 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
 
-$smacs = new SmacsFile();
+$so = new SmacsFile;
 
 //page data
-$pagedata['{msg}'] = @$_REQUEST['msg'];
-$pagedata['{title}'] = 'example smacs page';
-$pagedata['{footer}'] = 'etherjar.com';
-$pagedata['{table_name}'] = 'sums';
-
-if(empty($pagedata['{msg}'])) {
-	$smacs->slice('<!-- special_message -->')->delete();
+if(empty($_REQUEST['msg'])) {
+	$so->slice('<!message>')->delete();
+} else {
+	$pagedata['{msg}'] = $_REQUEST['msg'];
 }
 
-//row data
-for($i = 0; $i < 4; $i++) {
-	$slicedata = array('{rowno}' => $i);
-	for($j = 0; $j < 4; $j++) {
-		$slicedata["{cell$j}"] = $i + $j;
-	}
-	$smacs->slice('<!-- row -->')->apply($slicedata);
-}
+$so->apply(array(
+	'{title}'=>'example smacs page',
+	'{footer}'=>'etherjar.com'));
 
-$smacs->filter('htmlentities')->apply($pagedata);
-print $smacs;
+$so->slice('<!main>')->apply(array('{tablename}'=>'numbers'));
+$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'one', '{cell1}'=>'two', '{cell2}'=>'three'));
+$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'four', '{cell1}'=>'five', '{cell2}'=>'six'));
+$so->slice('<!main>')->slice('<!row>')->absorb();
+
+
+$so->slice('<!main>')->apply(array('{tablename}'=>'letters'));
+$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'alpha', '{cell1}'=>'beta', '{cell2}'=>'gamma'));
+$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'delta', '{cell1}'=>'epsilon', '{cell2}'=>'fuego'));
+$so->slice('<!main>')->slice('<!row>')->absorb();
+
+$so->slice('<!main>')->absorb();
+print $so;
