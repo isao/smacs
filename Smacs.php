@@ -3,7 +3,7 @@
  * Smacs - separate markup and code simply.
  *
  * @var $base    object class SmacsBase, represents the base/backing template
- * @var $pointer string slice marker, the key active nodes in $nodes array
+ * @var $pointer array of slice markers, used as keys in $nodes array
  * @var $nodes   array of SmacsSlice objects, indexed by slice marker strings
  * @var $filters array of callbacks to operate on replacement values
  *
