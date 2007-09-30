@@ -199,8 +199,8 @@ class SmacsBase
  */
 class SmacsSlice extends SmacsBase
 {
-	public $context;//regex
-	public $pattern;//read-only template
+	public $context;//regex, used for SmacsBase::absorb()
+	public $pattern;//read-only template used for SmacsSlice::apply()
 
 	public function __construct($mark, SmacsBase $base)
 	{
