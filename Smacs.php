@@ -11,10 +11,10 @@
  */
 class Smacs
 {
-	protected $base;
-	protected $pointer;
-	protected $nodes;
-	protected $filters;
+	public $base;
+	public $pointer;
+	public $nodes;
+	public $filters;
 
 	public function __construct($tpl)
 	{
@@ -28,11 +28,10 @@ class Smacs
 	{
 		$keys = array_keys($kvs);
 		$vals = array_values($kvs);
-		foreach($this->filters as $callback) {
+		while($callback = array_pop($this->filters)) {
 			$vals = array_map($callback, $vals);
 		}
 		$this->_buffer()->apply($keys, $vals);
-		$this->filters = array();
 	}
 
 	public function append($str)
@@ -52,36 +51,40 @@ class Smacs
 			throw new Exception('slice marker empty', E_USER_ERROR);
 		}
 		if(!isset($this->nodes[$mark])) {
-			$this->nodes[$mark] = new SmacsSlice($mark, $this->base);
+			$this->nodes[$mark] = new SmacsSlice($mark, $this->base, $this->pointer);
 		}
 		$this->pointer = $mark;
 		return $this;
 	}
 	
-	public function splice()
+	public function splice($mark)
 	{
-		$this->_buffer()->splice();
+		$this->_buffer()->absorb($this->nodes[$mark]);
 	}
 
 	public function delete()
 	{
-		$this->base->prune($this->nodes[$this->pointer]);
+		$this->base->delete($this->nodes[$this->pointer]);
 		unset($this->nodes[$this->pointer]);
+		$this->pointer = '';
 	}
 
 	public function __toString()
 	{
-		while($this->nodes) {
+		return $this->base->buffer;
+		/*while($this->nodes) {
 			$inner = array_pop($this->nodes);//absorb latest slice
 			if($outer = end($this->nodes)) {//into the next latest
+				#print $outer->mark.'::'.$inner->parentmark;
 				$outer->absorb($inner);
 			} else {
 				$this->base->absorb($inner);//or base
 			}
 		}
 		return $this->base->buffer;
+		*/
 	}
-
+	
 	protected function _buffer()
 	{
 		$pointer = $this->pointer; 
@@ -159,16 +162,16 @@ class SmacsBase
 		return $count;
 	}
 
-	public function absorb(SmacsSlice $inner)
+	public function absorb(SmacsSlice $inner, $append = '')
 	{
-		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
+		$this->buffer = preg_replace($inner->context, $inner->buffer.$append, $this->buffer, 1, $ok);
 		if(!$ok) {
-			trigger_error('slice operation failed', E_USER_WARNING);
+			trigger_error('slice not absorbed', E_USER_WARNING);
 		}
 		$inner->buffer = '';
 	}
 
-	public function prune(SmacsBase $inner)
+	public function delete(SmacsBase $inner)
 	{
 		$inner->buffer = '';
 		$this->absorb($inner);
@@ -188,16 +191,19 @@ class SmacsBase
 /**
  * Helper object to represent sub-sections of templates that repeat (like rows).
  * 
- * @var $context string regex that obtains $pattern from $base 
+ * @var $context string regex that obtains $pattern from $base->buffer 
  * @var $pattern string text containing placeholders, used against each apply()
  */
 class SmacsSlice extends SmacsBase
 {
+	public $mark;
 	public $context;
 	public $pattern;
 
-	public function __construct($mark, SmacsBase $base)
+	public function __construct($mark, SmacsBase $base, $parentmark)
 	{
+		$this->mark = $mark;
+		$this->parentmark = $parentmark;
 		$this->context = $this->_regex($mark);
 		if(preg_match($this->context, $base->buffer, $match)) {
 			$this->pattern = $match[1];
@@ -213,15 +219,10 @@ class SmacsSlice extends SmacsBase
 		return $count;
 	}
 
-	public function splice()
-	{
-		$this->buffer .= $this->pattern;
-	}
-
 	protected function _regex($mark)
 	{
-		$mark = preg_quote($this->_checkString($mark), '/');
-		return "/$mark([\s\S]+)$mark/";
+		$mark = preg_quote($this->_checkString($mark));
+		return "/$mark([\s\S]*)$mark/";
 	}
 }
 
