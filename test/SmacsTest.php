@@ -342,7 +342,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			head
 			
 			dogs: SNOOPY LASSIE 
-			cats: GARFIELD SAMMY 
+			cats: GARFIELD FLUFFY BOOTSIE CALVIN 
 			fish: NEMO 
 			
 			foot";
@@ -353,7 +353,9 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so->slice('<!d>')->absorb();
 
 		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'garfield'));
-		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'sammy'));
+		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'fluffy'));
+		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'bootsie'));
+		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'calvin'));
 		$so->slice('<!c>')->absorb();
 
 		$so->slice('<!f>')->filter('strtoupper')->apply(array('{fish}'=>'nemo'));
