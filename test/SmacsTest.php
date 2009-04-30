@@ -324,6 +324,45 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 
 		$this->assertEquals($expected, $so->__toString());
 	}
+
+	public function testSliceFilterApply()
+	{
+		$tpl = "
+
+			head
+			
+			dogs: <!d>{dog} <!d>
+			cats: <!c>{cat} <!c>
+			fish: <!f>{fish} <!f>
+			
+			foot";
+		
+		$expected = "
+
+			head
+			
+			dogs: SNOOPY LASSIE 
+			cats: GARFIELD SAMMY 
+			fish: NEMO 
+			
+			foot";
+		
+		$so = new Smacs($tpl);
+		$so->slice('<!d>')->filter('strtoupper')->apply(array('{dog}'=>'snoopy'));
+		$so->slice('<!d>')->filter('strtoupper')->apply(array('{dog}'=>'lassie'));
+		$so->slice('<!d>')->absorb();
+
+		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'garfield'));
+		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'sammy'));
+		$so->slice('<!c>')->absorb();
+
+		$so->slice('<!f>')->filter('strtoupper')->apply(array('{fish}'=>'nemo'));
+		$so->slice('<!f>')->absorb();
+
+		$this->assertEquals($expected, $so->__toString());
+	}
+
+
 }
 
 

@@ -32,8 +32,8 @@ class Smacs
 	{
 		while($callback = array_pop($this->filters)) {
 			if(is_scalar($callback) && method_exists('SmacsFilter', $callback)) {
-				$callback = array('SmacsFilter', $callback);
-		}
+				$callback = array('SmacsFilter', $callback);//alternate filter container
+			}
 			$kvs = array_map($callback, $kvs);
 		}
 		$this->_lastNode()->apply(array_keys($kvs), array_values($kvs));
@@ -228,8 +228,8 @@ class SmacsSlice extends SmacsBase
 }
 
 /**
- * 
- *
+ * SmacsFilter - static class to hold array_map() based callback functions for
+ * Smacs->filter()
  */
 class SmacsFilter
 {
