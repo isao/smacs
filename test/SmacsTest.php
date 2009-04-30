@@ -1,7 +1,6 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
 require_once 'PHPUnit/Framework/TestCase.php';
-require_once 'PHPUnit/Extensions/ExceptionTestCase.php';
 
 class SmacsTest extends PHPUnit_Framework_TestCase
 {
@@ -45,7 +44,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 
 		$expected = "
 
-			prevent 'XSS'
+			prevent &#039;XSS&#039;
 			==============
 			encode &quot;html entities&quot; like &lt;&amp;&gt;
 			--------------
@@ -57,7 +56,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			'{footer}' => 'page 1');
 
 		$so = new Smacs($tpl);
-		$so->filter('htmlentities')->apply($kv);
+		$so->filter('htmlspecialchars')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 

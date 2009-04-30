@@ -30,12 +30,13 @@ class Smacs
 
 	public function apply(array $kvs)
 	{
-		$keys = array_keys($kvs);
-		$vals = array_values($kvs);
 		while($callback = array_pop($this->filters)) {
-			$vals = array_map($callback, $vals);
+			if(is_scalar($callback) && method_exists('SmacsFilter', $callback)) {
+				$callback = array('SmacsFilter', $callback);
 		}
-		$this->_lastNode()->apply($keys, $vals);
+			$kvs = array_map($callback, $kvs);
+		}
+		$this->_lastNode()->apply(array_keys($kvs), array_values($kvs));
 	}
 
 	public function append($str)
@@ -223,5 +224,17 @@ class SmacsSlice extends SmacsBase
 	{
 		$mark = preg_quote($this->_checkString($mark));
 		return "/$mark([\s\S]*)$mark/";
+	}
+}
+
+/**
+ * 
+ *
+ */
+class SmacsFilter
+{
+	public static function htmlspecialchars($val)
+	{
+		return htmlspecialchars($val, ENT_QUOTES, 'UTF-8');
 	}
 }
