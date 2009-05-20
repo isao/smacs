@@ -198,7 +198,7 @@ class SmacsSlice extends SmacsBase
 	public function __construct($mark, SmacsBase $base)
 	{
 		$mark = preg_quote($this->_checkString($mark));
-		$this->context = $this->_regex("/$mark([\s\S]*)$mark/");
+		$this->context = "/$mark([\s\S]*)$mark/";
 		if(preg_match($this->context, $base->buffer, $match)) {
 			$this->pattern = $match[1];
 			$this->buffer = '';
