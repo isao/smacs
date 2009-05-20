@@ -1,24 +1,46 @@
 <?php
 /**
+ * SmacsFile - use a text file to create a Smacs template
+ */
+class SmacsFile extends Smacs
+{
+	public function __construct($file, $flags = 0, $context = null)
+	{
+		$tpl = file_get_contents($file, $flags, $context);
+		if(false === $tpl) {
+			throw new Exception("file $file could not be processed");
+		}
+		parent::__construct($tpl);
+	}
+}
+
+/**
+ * SmacsInclude - let PHP process a file, and use the output as a Smacs template
+ */
+class SmacsInclude extends Smacs
+{
+	public function __construct($file)
+	{
+		ob_start();
+		require $file;
+		parent::__construct(ob_get_flush());
+	}
+}
+
+/**
  * Smacs - separate markup and code simply.
  *
- * @var $base    object class SmacsBase, represents the base/backing template
- * @var $pointer array of slice markers, used as keys in $nodes array
- * @var $nodes   array of SmacsSlice objects, indexed by slice marker strings
- * @var $filters array of callbacks to operate on replacement values
- *
- * @see SmacsFile  extends Smacs to populate base template from a file using
- *                 either explicit or implicit file or path references
- * @see SmacsOb    extends Smacs to populate base template from output buffer
- * @see SmacsBase  is an encapsulated representation of a base template
- * @see SmacsSlice extends SmacsBase to represent a template subsection
+ * @var $base     (SmacsBase object), represents the base/backing template
+ * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
+ * @var $nodes    (array) SmacsSlice objects, indexed by slice marker strings
+ * @var $filters  (array) of callbacks to operate on replacement values
  */
 class Smacs
 {
-	public $base;
-	public $pointer;
-	public $nodes;
-	public $filters;
+	protected $base;
+	protected $pointer;
+	protected $nodes;
+	protected $filters;
 
 	public function __construct($tpl)
 	{
@@ -81,10 +103,17 @@ class Smacs
 		return $this->base->buffer;
 	}
 	
+	/**
+	 * return the object representing the most recently specified slice()
+	 * @param (bool)
+	 * @return (SmacsBase or SmacsSlice object)
+	 */
 	protected function _lastNode($preserve_stack = false)
 	{
 		$pointer = array_pop($this->pointer);
-		if(!$preserve_stack) $this->pointer = array();
+		if(!$preserve_stack) {
+			$this->pointer = array();
+		}
 		return $pointer
 			? $this->nodes[$pointer]
 			: $this->base;
@@ -92,61 +121,10 @@ class Smacs
 }
 
 /**
- * Specify a Smacs template from the filesystem, either explicitly, or based on
- * the calling script's filename.
- *
- * @example load a template file explicitly
- *   //from script "foo.php", loads "./tpl/bar.html"
- *   $foo = new SmacsFile('./tpl/bar.html');
- * @example load a template file implicitly
- *   //from script "foo.php", loads "./foo.html"
- *   $foo = new SmacsFile();
- * @example load a template file implicitly, from a specified path
- *   //in script "foo.php", loads "./tpl/foo.html"
- *   $foo = new SmacsFile('./tpl/');
- */
-class SmacsFile extends Smacs
-{
-	public function __construct($tpl='', $ext='.html')
-	{
-	  $ref = ($tpl=='' or is_dir($tpl)) ? $this->_impliedFile($tpl, $ext) : $tpl;
-		if(is_readable($ref)) {
-			parent::__construct(file_get_contents($ref));
-		} else {
-			throw new Exception("could not load file <$ref>");
-		}
-	}
-
-	protected function _impliedFile($dir, $ext)
-	{
-		if($dir == '') {
-			$dir = getcwd();
-		}
-		if(substr($dir, -1) != DIRECTORY_SEPARATOR) {
-			$dir .= DIRECTORY_SEPARATOR;
-		}
-		return $dir.basename($_SERVER['SCRIPT_NAME'], '.php').$ext;
-	}
-}
-
-class SmacsOb extends Smacs
-{
-	public function __construct()
-	{
-	  ob_start();		
-	}
-
-	public function endOb()
-	{
-		parent::__construct(ob_get_flush());
-	}
-}
-
-/**
  * Helper object to represent simple, non-repeating, template data. Completely
  * encapsulated within Smacs and SmacsSlice objects
  *
- * @var $buffer string template containing placeholders and markers
+ * @var $buffer (string) template containing placeholders and markers
  */
 class SmacsBase
 {
@@ -157,9 +135,21 @@ class SmacsBase
 		$this->buffer = $this->_checkString($str);
 	}
 
-	public function apply(array $keys, array $vals)
+	/**
+	 * @param (array) strings to look for in template
+	 * @param (array) strings to replace keys with in template
+	 * @param (string) if set, template to use (and re-use) for slices
+	 * @return (int) number of keys in template that were replaced
+	 */
+	public function apply(array $keys, array $vals, $pattern = null)
 	{
-		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
+		if(is_null($pattern)) {
+			//modify base/backing buffer
+			$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
+		} else {
+			//$this is a SmacsSlice: append to buffer, not overwrite
+			$this->buffer.= str_replace($keys, $vals, $pattern, $count);
+		}
 		if(!$count) {
 			trigger_error('apply() found no replacements', E_USER_WARNING);
 		}
@@ -195,17 +185,18 @@ class SmacsBase
 /**
  * Helper object to represent sub-sections of templates that repeat (like rows).
  * 
- * @var $context string regex that obtains $pattern from $base->buffer 
- * @var $pattern string text containing placeholders, used against each apply()
+ * @var $context (string) regex that obtains $pattern from $base->buffer 
+ * @var $pattern (string) read-only sub-template, used with each apply()
  */
 class SmacsSlice extends SmacsBase
 {
-	public $context;//regex, used for SmacsBase::absorb()
-	public $pattern;//read-only template used for SmacsSlice::apply()
+	protected $context;//regex, used for SmacsBase::absorb()
+	protected $pattern;//read-only template used for SmacsSlice::apply()
 
 	public function __construct($mark, SmacsBase $base)
 	{
-		$this->context = $this->_regex($mark);
+		$mark = preg_quote($this->_checkString($mark));
+		$this->context = $this->_regex("/$mark([\s\S]*)$mark/");
 		if(preg_match($this->context, $base->buffer, $match)) {
 			$this->pattern = $match[1];
 			$this->buffer = '';
@@ -216,14 +207,7 @@ class SmacsSlice extends SmacsBase
 
 	public function apply(array $keys, array $vals)
 	{
-		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
-		return $count;
-	}
-
-	protected function _regex($mark)
-	{
-		$mark = preg_quote($this->_checkString($mark));
-		return "/$mark([\s\S]*)$mark/";
+		return parent::apply($keys, $vals, $this->pattern);
 	}
 }
 

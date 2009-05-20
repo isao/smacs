@@ -20,21 +20,21 @@ class SmacsFileTest extends PHPUnit_Framework_TestCase
 		$so = new SmacsFile($file);//exception thrown
 	}
 	
-	public function testImpliedFileFromCwd()
-	{
-		$_SERVER['SCRIPT_NAME'] = __FILE__;//pretend this file is invoking Smacs
-
-		$so = new SmacsFile();
-		$expected = file_get_contents(dirname(__FILE__).'/SmacsFileTest.html');
-		$this->assertEquals($expected, $so->__toString());
-	}
-
-	public function testImpliedFileFromPath()
-	{
-		$_SERVER['SCRIPT_NAME'] = __FILE__;//pretend this file is invoking Smacs
-
-		$so = new SmacsFile(dirname(__FILE__));
-		$expected = file_get_contents(dirname(__FILE__).'/SmacsFileTest.html');
-		$this->assertEquals($expected, $so->__toString());
-	}
+#	public function testImpliedFileFromCwd()
+#	{
+#		$_SERVER['SCRIPT_NAME'] = __FILE__;//pretend this file is invoking Smacs
+#
+#		$so = new SmacsFile();
+#		$expected = file_get_contents(dirname(__FILE__).'/SmacsFileTest.html');
+#		$this->assertEquals($expected, $so->__toString());
+#	}
+#
+#	public function testImpliedFileFromPath()
+#	{
+#		$_SERVER['SCRIPT_NAME'] = __FILE__;//pretend this file is invoking Smacs
+#
+#		$so = new SmacsFile(dirname(__FILE__));
+#		$expected = file_get_contents(dirname(__FILE__).'/SmacsFileTest.html');
+#		$this->assertEquals($expected, $so->__toString());
+#	}
 }
