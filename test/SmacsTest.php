@@ -56,7 +56,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			'{footer}' => 'page 1');
 
 		$so = new Smacs($tpl);
-		$so->filter('htmlspecialchars')->apply($kv);
+		$so->filter('xmlenc')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 

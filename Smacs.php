@@ -219,8 +219,8 @@ class SmacsSlice extends SmacsBase
  */
 class SmacsFilter
 {
-	public static function htmlspecialchars($val)
+	public static function xmlenc($val)
 	{
-		return htmlspecialchars($val, ENT_QUOTES, 'UTF-8');
+		return htmlentities($val, ENT_QUOTES, 'UTF-8');
 	}
 }
