@@ -207,7 +207,7 @@ class SmacsSlice extends SmacsBase
 		}
 	}
 
-	public function apply(array $keys, array $vals)
+	public function apply(array $keys, array $vals, $ignored = null)
 	{
 		return parent::apply($keys, $vals, $this->pattern);
 	}
