@@ -32,7 +32,9 @@ class SmacsInclude extends Smacs
  *
  * @var $base     (SmacsBase object), represents the base/backing template
  * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
- * @var $nodes    (array) SmacsSlice objects, indexed by slice marker strings
+ * @var $nodes    (array) SmacsSlice objects, indexed by slice marker strings;
+ *                method calls after a slice() call are invoked on the node
+ *                element referenced by $this->pointer
  * @var $filters  (array) of callbacks to operate on replacement values
  */
 class Smacs
