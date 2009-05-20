@@ -1,7 +1,11 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
 
-$so = new SmacsFile;
+$so = new SmacsFile('SmacsExample.html');
+
+$pagedata = array(
+	'{title}'=>'example smacs page',
+	'{footer}'=>'etherjar.com');
 
 //page data
 if(empty($_REQUEST['msg'])) {
@@ -10,9 +14,7 @@ if(empty($_REQUEST['msg'])) {
 	$pagedata['{msg}'] = $_REQUEST['msg'];
 }
 
-$so->apply(array(
-	'{title}'=>'example smacs page',
-	'{footer}'=>'etherjar.com'));
+$so->filter('htmlentities')->apply($pagedata);
 
 $so->slice('<!main>')->apply(array('{tablename}'=>'numbers'));
 $so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'one', '{cell1}'=>'two', '{cell2}'=>'three'));
