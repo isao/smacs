@@ -1,9 +1,8 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
 require_once 'PHPUnit/Framework/TestCase.php';
-require_once 'PHPUnit/Extensions/ExceptionTestCase.php';
 
-class SmacsFileTest extends PHPUnit_Extensions_ExceptionTestCase
+class SmacsFileTest extends PHPUnit_Framework_TestCase
 {	
 	public function testExplicitRef()
 	{
