@@ -14,7 +14,7 @@ if(empty($_REQUEST['msg'])) {
 	$pagedata['{msg}'] = $_REQUEST['msg'];
 }
 
-$so->filter('htmlentities')->apply($pagedata);
+$so->filter('xmlencode')->apply($pagedata);
 
 $so->slice('<!main>')->apply(array('{tablename}'=>'numbers'));
 $so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'one', '{cell1}'=>'two', '{cell2}'=>'three'));
