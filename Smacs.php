@@ -64,6 +64,7 @@ class Smacs
 				? htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
 				: $v;
 		}
+		$this->filters = 0;
 		$this->_lastNode()->apply($keys, $vals);
 	}
 

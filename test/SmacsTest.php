@@ -365,4 +365,44 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 	}
 
+	public function testFilterGetsResetAftereachApply()
+	{
+		$tpl = "
+			
+			head
+
+			<!-- row -->{a} {b} {c}
+			<!-- row -->
+			foot";
+
+		$expected = '
+			
+			head
+
+			&quot;oh&quot; &quot;hai&quot; &quot;dere&quot;
+			"oh" "hai" "dere"
+			
+			foot';
+
+		$so = new Smacs($tpl);
+
+		$kv = array(
+			'{a}' => '"oh"',
+			'{b}' => '"hai"',
+			'{c}' => '"dere"',
+		);
+		$so->slice('<!-- row -->')->filter('xmlencode')->apply($kv);
+
+		$kv = array(
+			'{a}' => '"oh"',
+			'{b}' => '"hai"',
+			'{c}' => '"dere"',
+		);
+		$so->slice('<!-- row -->')->apply($kv);
+
+		$so->slice('<!-- row -->')->absorb();
+		$this->assertEquals($expected, $so->__toString());
+
+	}
+
 }
