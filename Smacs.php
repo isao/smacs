@@ -31,36 +31,40 @@ class SmacsInclude extends Smacs
  * Smacs - separate markup and code simply.
  *
  * @var $base     (SmacsBase object), represents the base/backing template
- * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
  * @var $nodes    (array) SmacsSlice objects, indexed by slice marker strings;
  *                method calls after a slice() call are invoked on the node
  *                element referenced by $this->pointer
- * @var $filters  (array) of callbacks to operate on replacement values
+ * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
+ * @var $filters  (int) bitmask
  */
 class Smacs
 {
+	const KEYBRACES = 1;
+	const XMLENCODE = 2;
+	const KEYANDENC = 3;
+
 	protected $base;
-	protected $pointer;
 	protected $nodes;
+	protected $pointer;
 	protected $filters;
 
 	public function __construct($tpl)
 	{
 		$this->base    = new SmacsBase($tpl);
-		$this->pointer = array();
 		$this->nodes   = array();
-		$this->filters = array();
+		$this->pointer = array();
+		$this->filters = 0;
 	}
 
-	public function apply(array $kvs)
+	public function apply($kvs)
 	{
-		while($callback = array_pop($this->filters)) {
-			if(is_scalar($callback) && method_exists('SmacsFilter', $callback)) {
-				$callback = array('SmacsFilter', $callback);//alternate filter container
-			}
-			$kvs = array_map($callback, $kvs);
+		foreach($kvs as $k => $v) {
+			$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
+			$vals[] = $this->filters & self::XMLENCODE
+				? htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
+				: $v;
 		}
-		$this->_lastNode()->apply(array_keys($kvs), array_values($kvs));
+		$this->_lastNode()->apply($keys, $vals);
 	}
 
 	public function append($str)
@@ -68,9 +72,18 @@ class Smacs
 		$this->_lastNode()->buffer .= $str;
 	}
 
-	public function filter(/* any number of arguments */)
+	public function filter(/* filter strings or ints */)
 	{
-		$this->filters = func_get_args();
+		foreach(func_get_args() as $arg) {
+			if(is_int($arg)) {
+				$this->filters |= $arg;
+			} else {
+				$arg = strtoupper($arg);
+				if(defined(__CLASS__.'::'.$arg)) {
+					$this->filters |= constant(__CLASS__.'::'.$arg);
+				}
+			}
+		}
 		return $this;
 	}
 
@@ -210,17 +223,5 @@ class SmacsSlice extends SmacsBase
 	public function apply(array $keys, array $vals, $ignored = null)
 	{
 		return parent::apply($keys, $vals, $this->pattern);
-	}
-}
-
-/**
- * SmacsFilter - static class to hold array_map() based callback functions for
- * Smacs->filter()
- */
-class SmacsFilter
-{
-	public static function xmlenc($val)
-	{
-		return htmlentities($val, ENT_QUOTES, 'UTF-8');
 	}
 }

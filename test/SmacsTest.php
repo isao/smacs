@@ -56,35 +56,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			'{footer}' => 'page 1');
 
 		$so = new Smacs($tpl);
-		$so->filter('xmlenc')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-	}
-
-	public function testMultipleFiltersCanBeSpecified()
-	{
-		$tpl = "
-
-			{title}
-			==============
-			{body}
-			--------------
-			{footer}";
-
-		$expected = "
-
-			prevent 'XSS'
-			==============
-			encode &quot;html entities&quot; like &lt;&amp;&gt;
-			--------------
-			page 1";
-
-		$kv = array(
-			'{title}' => "prevent 'XSS'       ",
-			'{body}' => '  encode "html entities" like <&>',
-			'{footer}' => '    page 1   ');
-
-		$so = new Smacs($tpl);
-		$so->filter('trim', 'htmlentities')->apply($kv);
+		$so->filter('xmlencode')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 
@@ -95,38 +67,6 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$expected = "hey";
 		$so = new Smacs($tpl);
 		$so->filter()->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-	}
-
-	public function testUseYourOwnFilterFunctionOrStaticMethod()
-	{
-		$tpl = "
-
-			{title}
-			==============
-			{body}
-			--------------
-			{footer}";
-
-		$expected = "
-
-			CESAGXFF
-			==============
-			RAXGGZYAGGFYXAZEXC
-			--------------
-			CW";
-
-		$kv = array(
-			'{title}' => "prevent 'XSS'",
-			'{body}' => 'encode "html entities" like <&> in markup',
-			'{footer}' => 'page 1');
-
-		$so = new Smacs($tpl);
-		$so->filter('my_filter_function')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
-		$so->filter(array('MyFilterClass', 'staticFunc'))->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 
@@ -325,64 +265,104 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testSliceFilterApply()
+	public function testFilterKeys()
 	{
 		$tpl = "
 
-			head
-			
-			dogs: <!d>{dog} <!d>
-			cats: <!c>{cat} <!c>
-			fish: <!f>{fish} <!f>
-			
-			foot";
-		
+			{title}
+			==============
+			{body}
+			--------------
+			{footer}";
+
 		$expected = "
 
-			head
-			
-			dogs: SNOOPY LASSIE 
-			cats: GARFIELD FLUFFY BOOTSIE CALVIN 
-			fish: NEMO 
-			
-			foot";
-		
+			Smacs
+			==============
+			smacs is simple
+			--------------
+			page 1";
+
+		$kv = array(
+			'title' => 'Smacs',
+			'body' => 'smacs is simple',
+			'footer' => 'page 1');
+
 		$so = new Smacs($tpl);
-		$so->slice('<!d>')->filter('strtoupper')->apply(array('{dog}'=>'snoopy'));
-		$so->slice('<!d>')->filter('strtoupper')->apply(array('{dog}'=>'lassie'));
-		$so->slice('<!d>')->absorb();
-
-		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'garfield'));
-		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'fluffy'));
-		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'bootsie'));
-		$so->slice('<!c>')->filter('strtoupper')->apply(array('{cat}'=>'calvin'));
-		$so->slice('<!c>')->absorb();
-
-		$so->slice('<!f>')->filter('strtoupper')->apply(array('{fish}'=>'nemo'));
-		$so->slice('<!f>')->absorb();
-
+		$so->filter('keybraces')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-
-}
-
-
-function my_filter_function($val)
-{
-	return str_rot13(metaphone($val));
-}
-
-class MyFilterClass
-{
-	//using non-static functions in a callback throws E_STRICT notices
-	public function filter($val)
+	public function testFilterKeysAndEncode()
 	{
-		return my_filter_function($val);
+		$tpl = "
+
+			{title}
+			==============
+			{body}
+			--------------
+			{footer}";
+
+		$expected = "
+
+			Smacs
+			==============
+			smacs is &quot;simple&quot; &lt;&gt;&amp;
+			--------------
+			page 1";
+
+		$kv = array(
+			'title' => 'Smacs',
+			'body' => 'smacs is "simple" <>&',
+			'footer' => 'page 1');
+
+		$so = new Smacs($tpl);
+		$so->filter('keybraces', 'xmlencode')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('keyandenc')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('keyandenc', 'keybraces', 'xmlencode')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
-	static public function staticFunc($val)
+	public function testFilterUsingConstants()
 	{
-		return my_filter_function($val);
+		$tpl = "
+
+			{title}
+			==============
+			{body}
+			--------------
+			{footer}";
+
+		$expected = "
+
+			Smacs
+			==============
+			smacs is &quot;simple&quot; &lt;&gt;&amp;
+			--------------
+			page 1";
+
+		$kv = array(
+			'title' => 'Smacs',
+			'body' => 'smacs is "simple" <>&',
+			'footer' => 'page 1');
+
+		$so = new Smacs($tpl);
+		$so->filter(Smacs::KEYBRACES, Smacs::XMLENCODE)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter(Smacs::KEYANDENC)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter(Smacs::KEYANDENC, Smacs::KEYBRACES, Smacs::XMLENCODE)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
 	}
+
 }
