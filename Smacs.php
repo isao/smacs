@@ -42,6 +42,7 @@ class Smacs
 	const KEYBRACES = 1;
 	const XMLENCODE = 2;
 	const KEYANDENC = 3;
+	const NO_QUOTES = 4;
 
 	protected $base;
 	protected $nodes;
@@ -58,10 +59,11 @@ class Smacs
 
 	public function apply($kvs)
 	{
+		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
 		foreach($kvs as $k => $v) {
 			$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
 			$vals[] = $this->filters & self::XMLENCODE
-				? htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
+				? htmlspecialchars($v, $quoteflag, 'UTF-8')
 				: $v;
 		}
 		$this->filters = 0;

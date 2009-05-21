@@ -379,8 +379,8 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			
 			head
 
-			&quot;oh&quot; &quot;hai&quot; &quot;dere&quot;
-			"oh" "hai" "dere"
+			&quot;oh&quot; &quot;hai&quot; &lt;&amp;&gt;
+			"oh" "hai" <&>
 			
 			foot';
 
@@ -389,20 +389,39 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$kv = array(
 			'{a}' => '"oh"',
 			'{b}' => '"hai"',
-			'{c}' => '"dere"',
+			'{c}' => '<&>',
 		);
+
 		$so->slice('<!-- row -->')->filter('xmlencode')->apply($kv);
-
-		$kv = array(
-			'{a}' => '"oh"',
-			'{b}' => '"hai"',
-			'{c}' => '"dere"',
-		);
 		$so->slice('<!-- row -->')->apply($kv);
-
 		$so->slice('<!-- row -->')->absorb();
 		$this->assertEquals($expected, $so->__toString());
+	}
+	
+	public function testXmlencodeQuoteFilter()
+	{
+		$tpl = "His name is {name} {and} they called him {nickname}";
+		
+		$kv = array(
+			'{name}'     => "O'Hara",
+			'{and}'      => '&',
+			'{nickname}' => '"slim"',
+		);
+		
+		$expected = "His name is O'Hara & they called him \"slim\"";
+		$so = new Smacs($tpl);
+		$so->apply($kv);//no filter
+		$this->assertEquals($expected, $so->__toString());
 
+		$expected = "His name is O&#039;Hara &amp; they called him &quot;slim&quot;";
+		$so = new Smacs($tpl);
+		$so->filter('xmlencode')->apply($kv);// <>&"' values quoted
+		$this->assertEquals($expected, $so->__toString());		
+
+		$expected = "His name is O'Hara &amp; they called him \"slim\"";
+		$so = new Smacs($tpl);
+		$so->filter('xmlencode', 'no_quotes')->apply($kv);// <>&"' values quoted
+		$this->assertEquals($expected, $so->__toString());
 	}
 
 }
