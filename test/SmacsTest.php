@@ -423,5 +423,36 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so->filter('xmlencode', 'no_quotes')->apply($kv);// <>&"' values quoted
 		$this->assertEquals($expected, $so->__toString());
 	}
+	
+	public function testApplyTakesArbitraryArrayOrObjArguments()
+	{
+		$tpl = "
+
+			{title}
+			==============
+			{body}
+			--------------
+			{footer}";
+
+		$expected = "
+
+			Smacs
+			==============
+			smacs is simple
+			--------------
+			page 1";
+
+		$kv = array(
+			'{title}' => 'Smacs',
+		);
+		
+		$ob = (object) array(
+			'{body}' => 'smacs is simple',
+			'{footer}' => 'page 1');
+
+		$so = new Smacs($tpl);
+		$so->apply($kv, $ob);
+		$this->assertEquals($expected, $so->__toString());
+	}
 
 }

@@ -57,14 +57,16 @@ class Smacs
 		$this->filters = 0;
 	}
 
-	public function apply($kvs)
+	public function apply(/* arrays or objects */)
 	{
 		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
-		foreach($kvs as $k => $v) {
-			$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
-			$vals[] = $this->filters & self::XMLENCODE
-				? htmlspecialchars($v, $quoteflag, 'UTF-8')
-				: $v;
+		foreach(func_get_args() as $kvs) {
+			foreach($kvs as $k => $v) {
+				$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
+				$vals[] = $this->filters & self::XMLENCODE
+					? htmlspecialchars($v, $quoteflag, 'UTF-8')
+					: $v;
+			}
 		}
 		$this->filters = 0;
 		$this->_lastNode()->apply($keys, $vals);
