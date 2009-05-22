@@ -1,9 +1,16 @@
 <?php
 /**
- * SmacsFile - use a text file to create a Smacs template
+ * SmacsFile - get contents of a text file to create a Smacs template
  */
 class SmacsFile extends Smacs
 {
+	/**
+	 * @param (string) path to file to read
+	 * @param (int) optional flags, like FILE_USE_INCLUDE_PATH
+	 * @param (resource) optional stream_context_create() resource
+	 * @see http://php.net/file_get_contents
+	 * @see http://php.net/stream_context_create
+	 */
 	public function __construct($file, $flags = 0, $context = null)
 	{
 		$tpl = file_get_contents($file, $flags, $context);
@@ -19,11 +26,16 @@ class SmacsFile extends Smacs
  */
 class SmacsInclude extends Smacs
 {
-	public function __construct($file)
+	/**
+	 * @param (string) path to a file to include
+	 * @param (array) optional array to extract() to included file variable scope
+	 */
+	public function __construct($file, array $vars = array())
 	{
 		ob_start();
+		extract($vars);
 		require $file;
-		parent::__construct(ob_get_flush());
+		parent::__construct(ob_get_clean());
 	}
 }
 
@@ -35,7 +47,7 @@ class SmacsInclude extends Smacs
  *                method calls after a slice() call are invoked on the node
  *                element referenced by $this->pointer
  * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
- * @var $filters  (int) bitmask
+ * @var $filters  (int) bitmask for matching XMLENCODE, KEYANDENC, etc.
  */
 class Smacs
 {
@@ -57,6 +69,10 @@ class Smacs
 		$this->filters = 0;
 	}
 
+	/**
+	 * @param (mixed) arrays or objects having keys/properties to make template
+	 *                substiututions with
+	 */
 	public function apply(/* arrays or objects */)
 	{
 		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
@@ -77,6 +93,9 @@ class Smacs
 		$this->_lastNode()->buffer .= $str;
 	}
 
+	/**
+	 * @param (mixed) strings or ints corresponing to this class's constants
+	 */
 	public function filter(/* filter strings or ints */)
 	{
 		foreach(func_get_args() as $arg) {
