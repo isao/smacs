@@ -1,31 +1,52 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
 
-$so = new SmacsFile('SmacsExample.html');
+$Page = new SmacsFile('SmacsExample.html');
 
 $pagedata = array(
 	'{title}'=>'example smacs page',
 	'{footer}'=>'etherjar.com');
 
+$rowdata[] = array(
+	'{a}' => 'able',
+	'{b}' => 'baker',
+	'{c}' => 'charlie',
+);
+$rowdata[] = array(
+	'{a}' => 'anteater',
+	'{b}' => 'bugbear',
+	'{c}' => 'cougar',
+);
+$rowdata[] = array(
+	'{a}' => 'alpha',
+	'{b}' => 'beta',
+	'{c}' => 'gamma',
+);
+
 //page data
 if(empty($_REQUEST['msg'])) {
-	$so->slice('<!message>')->delete();
+	$Page->slice('<!message>')->delete();
 } else {
 	$pagedata['{msg}'] = $_REQUEST['msg'];
 }
+$Page->filter('xmlencode')->apply($pagedata);
 
-$so->filter('xmlencode')->apply($pagedata);
+//lowercase
+$tabledata = array('{tablename}' => 'lowercase');
+$Page->slice('<!-- main -->')->apply($tabledata);//need this before absorb()
+foreach($rowdata as $row) {
+	$Page->slice('<!-- main -->')->slice('<!-- row -->')->apply($row);
+}
+$Page->slice('<!-- main -->')->slice('<!-- row -->')->absorb();
 
-$so->slice('<!main>')->apply(array('{tablename}'=>'numbers'));
-$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'one', '{cell1}'=>'two', '{cell2}'=>'three'));
-$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'four', '{cell1}'=>'five', '{cell2}'=>'six'));
-$so->slice('<!main>')->slice('<!row>')->absorb();
+//UPPERcase
+$tabledata = array('{tablename}' => 'UPPERcase');
+$Page->slice('<!-- main -->')->apply($tabledata);
+foreach($rowdata as $row) {
+	$row = array_map('strtoupper', $row);
+	$Page->slice('<!-- main -->')->slice('<!-- row -->')->apply($row);
+}
+$Page->slice('<!-- main -->')->slice('<!-- row -->')->absorb();
 
-
-$so->slice('<!main>')->apply(array('{tablename}'=>'letters'));
-$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'alpha', '{cell1}'=>'beta', '{cell2}'=>'gamma'));
-$so->slice('<!main>')->slice('<!row>')->apply(array('{cell0}'=>'delta', '{cell1}'=>'epsilon', '{cell2}'=>'fuego'));
-$so->slice('<!main>')->slice('<!row>')->absorb();
-
-$so->slice('<!main>')->absorb();
-print $so;
+$Page->slice('<!-- main -->')->absorb();
+print $Page;
