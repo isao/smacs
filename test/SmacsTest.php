@@ -291,6 +291,11 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tpl);
 		$so->filter('keybraces')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('addbraces')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
 	}
 
 	public function testFilterKeysAndEncode()
@@ -327,6 +332,14 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tpl);
 		$so->filter('keyandenc', 'keybraces', 'xmlencode')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('keyandenc', 'addbraces', 'xmlencode')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('filterall')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
 	}
 
 	public function testFilterUsingConstants()
@@ -352,6 +365,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			'body' => 'smacs is "simple" <>&',
 			'footer' => 'page 1');
 
+		//multiple parameter constants
 		$so = new Smacs($tpl);
 		$so->filter(Smacs::KEYBRACES, Smacs::XMLENCODE)->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
@@ -361,8 +375,25 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 
 		$so = new Smacs($tpl);
-		$so->filter(Smacs::KEYANDENC, Smacs::KEYBRACES, Smacs::XMLENCODE)->apply($kv);
+		$so->filter(Smacs::FILTERALL)->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
+
+		//constants combined in a single parameter (OR'd)
+		$filters = Smacs::KEYBRACES | Smacs::XMLENCODE;
+		$so = new Smacs($tpl);
+		$so->filter($filters)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$filters = Smacs::KEYBRACES | Smacs::XMLENCODE | Smacs::SKIPANGLE;
+		$so = new Smacs($tpl);
+		$so->filter($filters)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$filters = Smacs::FILTERALL;
+		$so = new Smacs($tpl);
+		$so->filter($filters)->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
 	}
 
 	public function testFilterGetsResetAftereachApply()
@@ -398,7 +429,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 	}
 	
-	public function testXmlencodeQuoteFilter()
+	public function testFilterXmlencodeNoQuotes()
 	{
 		$tpl = "His name is {name} {and} they called him {nickname}";
 		
@@ -422,6 +453,13 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tpl);
 		$so->filter('xmlencode', 'no_quotes')->apply($kv);// <>&"' values quoted
 		$this->assertEquals($expected, $so->__toString());
+
+		$expected = "His name is O'Hara &amp; they called him \"slim\"";
+		$so = new Smacs($tpl);
+		$filters = (Smacs::FILTERALL ^ Smacs::ADDBRACES) | Smacs::NO_QUOTES;
+		$so->filter($filters)->apply($kv);// <>&"' values quoted
+		$this->assertEquals($expected, $so->__toString());
+
 	}
 	
 	public function testApplyTakesArbitraryArrayOrObjArguments()
@@ -454,5 +492,87 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so->apply($kv, $ob);
 		$this->assertEquals($expected, $so->__toString());
 	}
+
+	public function testFilterSkipAngle()
+	{
+		$tpl = "
+
+			{title}
+			==============
+			{<body>}
+			--------------
+			{footer}";
+
+		$expected = "
+
+			Smacs
+			==============
+			filter 'skipangle' skips value encoding <em>simple</em>
+			--------------
+			page &lt;1&gt;";
+
+		$kv = array(
+			'{title}' => 'Smacs',
+			'{<body>}' => "filter 'skipangle' skips value encoding <em>simple</em>",
+			'{footer}' => 'page <1>',
+		);
+
+		$so = new Smacs($tpl);
+		$so->filter('xmlencode', 'skipangle')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$kv = array(
+			'title' => 'Smacs',
+			'<body>' => "filter 'skipangle' skips value encoding <em>simple</em>",
+			'footer' => 'page <1>',
+		);
+
+		$so = new Smacs($tpl);
+		$so->filter('addbraces', 'xmlencode', 'skipangle')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter('filterall')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+	}
+
+	public function testFilterSkipAngleSlice()
+	{
+		$tpl = "
+			head
+			<!-- row -->{a}  {<b>}  {c}
+			<!-- row -->foot";
+		
+		$expected = "
+			head
+			00&gt;  <0&0>  &lt;00
+			01&gt;  <0&1>  &lt;01
+			02&gt;  <0&2>  &lt;02
+			10&gt;  <1&0>  &lt;10
+			11&gt;  <1&1>  &lt;11
+			12&gt;  <1&2>  &lt;12
+			20&gt;  <2&0>  &lt;20
+			21&gt;  <2&1>  &lt;21
+			22&gt;  <2&2>  &lt;22
+			foot";
+
+		$filters = Smacs::ADDBRACES | Smacs::XMLENCODE | Smacs::SKIPANGLE;
+
+		$so = new Smacs($tpl);
+		for($i = 0; $i < 3; $i++) {
+			for($j = 0; $j < 3; $j++) {
+				$kv = array(
+					'a' => "$i$j>",
+					'<b>' => "<$i&$j>",//these values won't be encoded, unlike the others
+					'c' => "<$i$j",
+				);
+				$so->slice('<!-- row -->')->filter($filters)->apply($kv);
+			}
+		}
+		$so->slice('<!-- row -->')->absorb();
+		
+		$this->assertEquals($expected, $so->__toString());
+	}
+
 
 }

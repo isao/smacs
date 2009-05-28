@@ -52,9 +52,12 @@ class SmacsInclude extends Smacs
 class Smacs
 {
 	const KEYBRACES = 1;
+	const ADDBRACES = 1;
 	const XMLENCODE = 2;
-	const KEYANDENC = 3;
-	const NO_QUOTES = 4;
+	const SKIPANGLE = 4;
+	const KEYANDENC = 7;
+	const FILTERALL = 7;
+	const NO_QUOTES = 8;
 
 	protected $base;
 	protected $nodes;
@@ -70,16 +73,18 @@ class Smacs
 	}
 
 	/**
-	 * @param (mixed) arrays or objects having keys/properties to make template
-	 *                substiututions with
+	 * Apply key/value pairs to template, modifying them depending on filter(s)
+	 * @see $this->filter()
+	 * @param (mixed) arrays or objects having keys/values to replace in template
 	 */
-	public function apply(/* arrays or objects */)
+	public function apply(/* array(s) and/or object(s) */)
 	{
 		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
 		foreach(func_get_args() as $kvs) {
 			foreach($kvs as $k => $v) {
-				$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
+				$keys[] = $this->filters & self::ADDBRACES ? '{'.$k.'}' : $k;
 				$vals[] = $this->filters & self::XMLENCODE
+					&& (($this->filters ^ self::SKIPANGLE) && !strpos($k, '>'))
 					? htmlspecialchars($v, $quoteflag, 'UTF-8')
 					: $v;
 			}
@@ -94,9 +99,33 @@ class Smacs
 	}
 
 	/**
-	 * @param (mixed) strings or ints corresponing to this class's constants
+	 * Set flags to use to manipulate the keys and/or values provided by the next
+	 *  $this->apply() call, before they are applied to the slice or template
+	 *
+	 * @param (mixed) string(s) or int(s) corresponing to this class's constants
+	 *
+	 * @example
+	 *   $this->filter('keybraces');
+	 *   $this->filter('keybraces', 'xmlencode');
+	 *   $this->filter(Smacs::FILTERALL, Smacs::NO_QUOTES);
+	 *   $this->filter(Smacs::FILTERALL| Smacs::NO_QUOTES);
+	 *   $this->filter(Smacs::FILTERALL^ Smacs::SKIPANGLE);
+	 * 
+	 * @note filter behaviors
+	 *    keybraces - add { and } to keys
+	 *    addbraces - add { and } to keys
+	 *    xmlencode - replace <&'"> with xml/html entities in values
+	 *    skipangle - if xmlencode flag is set, and key contains a '>' DO NOT
+	 *                replace <&'"> with xml/html entities in values
+	 *    keyandenc - same as 'keybraces', 'xmlencode', 'skipangle'
+	 *    filterall - same as 'keybraces', 'xmlencode', 'skipangle'
+	 *    no_quotes - if xmlencode flag is set, encode only <&> characters in
+	 *                values; DO NOT encode single or double quotes
+	 *
+	 * @note encode replacement values if 'xmlencode' flag is set, but NOT if the
+	 *  key contains a '>' and the 'skipangle' flag is set
 	 */
-	public function filter(/* filter strings or ints */)
+	public function filter(/* filter string(s) or int(s) */)
 	{
 		foreach(func_get_args() as $arg) {
 			if(is_int($arg)) {
