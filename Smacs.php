@@ -206,18 +206,11 @@ class SmacsBase
 	/**
 	 * @param (array) strings to look for in template
 	 * @param (array) strings to replace keys with in template
-	 * @param (string) if set, template to use (and re-use) for slices
 	 * @return (int) number of keys in template that were replaced
 	 */
-	public function apply(array $keys, array $vals, $pattern = null)
+	public function apply(array $keys, array $vals)
 	{
-		if(is_null($pattern)) {
-			//modify base/backing buffer
-			$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
-		} else {
-			//$this is a SmacsSlice: append to buffer, not overwrite
-			$this->buffer.= str_replace($keys, $vals, $pattern, $count);
-		}
+		$this->buffer = str_replace($keys, $vals, $this->buffer, $count);
 		if(!$count) {
 			trigger_error('apply() found no replacements', E_USER_WARNING);
 		}
@@ -273,8 +266,9 @@ class SmacsSlice extends SmacsBase
 		}
 	}
 
-	public function apply(array $keys, array $vals, $ignored = null)
+	public function apply(array $keys, array $vals)
 	{
-		return parent::apply($keys, $vals, $this->pattern);
+		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
+		return $count;
 	}
 }
