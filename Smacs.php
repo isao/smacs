@@ -256,31 +256,43 @@ class SmacsSlice extends SmacsBase
 {
 	protected $context;//regex, used for SmacsBase::absorb()
 	protected $pattern;//read-only template used for SmacsSlice::apply()
-	protected $need2cp;
+	protected $need2cp;//for nested slice absorb() w/out apply() first
 
 	public function __construct($mark, SmacsBase $base)
 	{
 		$mark = preg_quote($this->_checkString($mark));
 		$this->context = "/$mark([\s\S]*)$mark/";
+		$this->need2cp = false;
+
 		if(preg_match($this->context, $base->buffer, $match)) {
 			$this->pattern = $match[1];
 			$this->buffer = '';
 		} else {
 			throw new Exception("slice '$mark' not found", E_USER_ERROR);
 		}
-		$this->need2cp = false;//for nested slice absorb() w/out apply()
 	}
 
+	/**
+	 * applies key/value replacements to the original slice pattern, and appends
+	 * the result to the slice buffer.
+	 * @param (array) strings to look for in slice pattern
+	 * @param (array) strings to replace keys with in slice pattern
+	 * @return (int) number of keys in slice pattern that were replaced
+	 */
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
+		if(!$count) {
+			trigger_error('apply() found no replacements', E_USER_WARNING);
+		}
 		return $count;
 	}
 	
 	/**
 	 * absorb a slice into another slice. this is tricky because the backing slice
-	 * buffer may be empty if apply() was never called. so let's check, and set a
-	 * flag if this is the case.
+	 * buffer may be empty if apply() was never called. so let's set a flag if
+	 * this is the case, rather than checking for a context in the buffer every
+	 * time.
 	 */
 	public function absorb(SmacsSlice $inner)
 	{
