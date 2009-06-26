@@ -217,6 +217,9 @@ class SmacsBase
 		return $count;
 	}
 
+	/**
+	 * absorb a slice's buffer back into it's original template position
+	 */
 	public function absorb(SmacsSlice $inner)
 	{
 		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
@@ -253,6 +256,7 @@ class SmacsSlice extends SmacsBase
 {
 	protected $context;//regex, used for SmacsBase::absorb()
 	protected $pattern;//read-only template used for SmacsSlice::apply()
+	protected $need2cp;
 
 	public function __construct($mark, SmacsBase $base)
 	{
@@ -262,13 +266,30 @@ class SmacsSlice extends SmacsBase
 			$this->pattern = $match[1];
 			$this->buffer = '';
 		} else {
-			throw new Exception("slice '$mark' not found", E_USER_WARNING);
+			throw new Exception("slice '$mark' not found", E_USER_ERROR);
 		}
+		$this->need2cp = false;//for nested slice absorb() w/out apply()
 	}
 
 	public function apply(array $keys, array $vals)
 	{
 		$this->buffer .= str_replace($keys, $vals, $this->pattern, $count);
 		return $count;
+	}
+	
+	/**
+	 * absorb a slice into another slice. this is tricky because the backing slice
+	 * buffer may be empty if apply() was never called. so let's check, and set a
+	 * flag if this is the case.
+	 */
+	public function absorb(SmacsSlice $inner)
+	{
+		if(!strlen($this->buffer)) {
+			$this->need2cp = true;
+		}
+		if($this->need2cp) {
+			$this->buffer .= $this->pattern;
+		}
+		parent::absorb($inner);
 	}
 }
