@@ -6,7 +6,7 @@ class SmacsFileTest extends PHPUnit_Framework_TestCase
 {	
 	public function testExplicitRef()
 	{
-		$file = dirname(__FILE__).'/SmacsFileTest.html';
+		$file = dirname(__FILE__).'/test.html';
 		$so = new SmacsFile($file);
 		
 		$expected = file_get_contents($file);
