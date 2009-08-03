@@ -14,9 +14,9 @@ class SmacsFile extends Smacs
 	public function __construct($file, $flags = 0, $context = null)
 	{
 		$tpl = file_get_contents($file, $flags, $context);
-		if(false === $tpl) {
-			throw new Exception("file $file could not be processed");
-		}
+			if(false === $tpl) {
+				throw new Exception("file $file could not be processed");
+			}
 		parent::__construct($tpl);
 	}
 }
@@ -34,7 +34,8 @@ class SmacsInclude extends Smacs
 	{
 		ob_start();
 		extract($vars);
-		require $file;
+		$files = (array) $file;
+		foreach($files as $f) require $f;
 		parent::__construct(ob_get_clean());
 	}
 }
