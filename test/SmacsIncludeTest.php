@@ -25,4 +25,11 @@ this is test file test-c.html';
 		$S = new SmacsInclude($files);
 		$this->assertEquals($expected, $S->__toString());
 	}
+
+	public function testExtractVarsOverwrite()
+	{
+		$expected = 'hi there';
+		$S = new SmacsInclude('test/test-vars.html', array('_file' => 'there'));
+		$this->assertEquals($expected, $S->__toString());
+	}
 }
