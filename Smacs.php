@@ -14,9 +14,9 @@ class SmacsFile extends Smacs
 	public function __construct($file, $flags = 0, $context = null)
 	{
 		$tpl = file_get_contents($file, $flags, $context);
-			if(false === $tpl) {
-				throw new Exception("file $file could not be processed");
-			}
+		if(false === $tpl) {
+			throw new Exception("file $file could not be processed");
+		}
 		parent::__construct($tpl);
 	}
 }
@@ -27,15 +27,17 @@ class SmacsFile extends Smacs
 class SmacsInclude extends Smacs
 {
 	/**
-	 * @param (string) path to a file to include
+	 * @note vars for `extract`ing should not contain $file or $files 
+	 * @param (mixed) string or array for file(s) to include
 	 * @param (array) optional array to extract() to included file variable scope
 	 */
-	public function __construct($file, array $vars = array())
+	public function __construct($files, array $vars = array())
 	{
 		ob_start();
 		extract($vars);
-		$files = (array) $file;
-		foreach($files as $f) require $f;
+		foreach(((array) $files) as $file) {
+			require $file;
+		}
 		parent::__construct(ob_get_clean());
 	}
 }
