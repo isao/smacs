@@ -29,13 +29,13 @@ class SmacsInclude extends Smacs
 	/**
 	 * @param (mixed) string or array for file(s) to include
 	 * @param (array) optional array to extract() to included file variable scope
-	 * @note if $vars to be extracted contain '_file' or '_f' they will be
-	 *  re-written as '__file' and/or '__f'
+	 * @note if var names (keys of $vars) to be extracted contain '_file', '_f',
+	 *  or '_vars' they will be extracted as '__file', '__f' and/or '__vars'
 	 */
-	public function __construct($_file, array $vars = array())
+	public function __construct($_file, array $_vars = array())
 	{
 		ob_start();
-		extract($vars, EXTR_PREFIX_IF_EXISTS, '');
+		extract($_vars, EXTR_PREFIX_IF_EXISTS, '');
 		foreach(((array) $_file) as $_f) {
 			require $_f;
 		}
