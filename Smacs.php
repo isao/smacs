@@ -35,7 +35,7 @@ class SmacsInclude extends Smacs
 	public function __construct($_file, array $vars = array())
 	{
 		ob_start();
-		extract($vars,  EXTR_PREFIX_IF_EXISTS, '');
+		extract($vars, EXTR_PREFIX_IF_EXISTS, '');
 		foreach(((array) $_file) as $_f) {
 			require $_f;
 		}
