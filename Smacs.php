@@ -86,11 +86,13 @@ class Smacs
 		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
 		foreach(func_get_args() as $kvs) {
 			foreach($kvs as $k => $v) {
-				$keys[] = $this->filters & self::ADDBRACES ? '{'.$k.'}' : $k;
-				$vals[] = $this->filters & self::XMLENCODE
-					&& (($this->filters ^ self::SKIPANGLE) && !strpos($k, '>'))
-					? htmlspecialchars($v, $quoteflag, 'UTF-8')
-					: $v;
+				if(is_scalar($v)) {
+					$keys[] = $this->filters & self::ADDBRACES ? '{'.$k.'}' : $k;
+					$vals[] = $this->filters & self::XMLENCODE
+						&& (($this->filters ^ self::SKIPANGLE) && !strpos($k, '>'))
+						? htmlspecialchars($v, $quoteflag, 'UTF-8')
+						: $v;					
+				}
 			}
 		}
 		$this->filters = 0;
