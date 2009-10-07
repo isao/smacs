@@ -55,12 +55,11 @@ class SmacsInclude extends Smacs
  */
 class Smacs
 {
-	const KEYBRACES = 1;
-	const ADDBRACES = 1;
+	const NOFILTERS = 0;
+	const KEYBRACES = 1; const ADDBRACES = 1;
 	const XMLENCODE = 2;
 	const SKIPANGLE = 4;
-	const KEYANDENC = 7;
-	const FILTERALL = 7;
+	const KEYANDENC = 7; const FILTERALL = 7;//ADDBRACES + XMLENCODE + SKIPANGLE
 	const NO_QUOTES = 8;
 
 	protected $base;
@@ -95,7 +94,7 @@ class Smacs
 				}
 			}
 		}
-		$this->filters = 0;
+		$this->filters = self::NOFILTERS;
 		$this->_lastNode()->apply($keys, $vals);
 	}
 
@@ -133,15 +132,22 @@ class Smacs
 	 */
 	public function filter(/* filter string(s) or int(s) */)
 	{
-		foreach(func_get_args() as $arg) {
-			if(is_int($arg)) {
-				$this->filters |= $arg;
-			} else {
-				$arg = strtoupper($arg);
-				if(defined(__CLASS__.'::'.$arg)) {
-					$this->filters |= constant(__CLASS__.'::'.$arg);
+		$args = func_get_args();
+		if(!$args) {
+			$this->filters = self::FILTERALL;
+		} else {
+			foreach($args as $arg) {
+				if(is_int($arg)) {
+					$this->filters |= $arg;
+				} else {
+					$arg = strtoupper($arg);
+					if(defined(__CLASS__.'::'.$arg)) {
+						$this->filters |= constant(__CLASS__.'::'.$arg);
+					} else {
+						trigger_error('unknown filter', E_USER_WARNING);
+					}
 				}
-			}
+			}			
 		}
 		return $this;
 	}

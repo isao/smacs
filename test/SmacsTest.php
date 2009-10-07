@@ -60,11 +60,11 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 	}
 
-	public function testEmptyFilterIsNop()
+	public function testEmptyFilterIsFilterAll()
 	{
-		$tpl = "{title}";
-		$kv = array('{title}' => 'hey');
-		$expected = "hey";
+		$tpl = "{title} {mixed>}";
+		$kv = array('title' => 'hey', 'mixed>' => '<&"\'> not encoded');
+		$expected = 'hey <&"\'> not encoded';
 		$so = new Smacs($tpl);
 		$so->filter()->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
