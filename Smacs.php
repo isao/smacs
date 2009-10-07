@@ -72,7 +72,7 @@ class Smacs
 		$this->base    = new SmacsBase($tpl);
 		$this->nodes   = array();
 		$this->pointer = array();
-		$this->filters = 0;
+		$this->filters = self::NOFILTERS;
 	}
 
 	/**
