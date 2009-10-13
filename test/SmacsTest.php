@@ -291,11 +291,6 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$so = new Smacs($tpl);
 		$so->filter('keybraces')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
-		$so->filter('addbraces')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
 	}
 
 	public function testFilterKeysAndEncode()
@@ -326,19 +321,11 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 
 		$so = new Smacs($tpl);
-		$so->filter('keyandenc')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
-		$so->filter('keyandenc', 'keybraces', 'xmlencode')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
-		$so->filter('keyandenc', 'addbraces', 'xmlencode')->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
 		$so->filter('filterall')->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+
+		$so = new Smacs($tpl);
+		$so->filter()->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 	}
 
@@ -368,10 +355,6 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		//multiple parameter constants
 		$so = new Smacs($tpl);
 		$so->filter(Smacs::KEYBRACES, Smacs::XMLENCODE)->apply($kv);
-		$this->assertEquals($expected, $so->__toString());
-
-		$so = new Smacs($tpl);
-		$so->filter(Smacs::KEYANDENC)->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 
 		$so = new Smacs($tpl);
@@ -456,7 +439,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 
 		$expected = "His name is O'Hara &amp; they called him \"slim\"";
 		$so = new Smacs($tpl);
-		$filters = (Smacs::FILTERALL ^ Smacs::ADDBRACES) | Smacs::NO_QUOTES;
+		$filters = (Smacs::FILTERALL ^ Smacs::KEYBRACES) | Smacs::NO_QUOTES;
 		$so->filter($filters)->apply($kv);// <>&"' values quoted
 		$this->assertEquals($expected, $so->__toString());
 
@@ -528,7 +511,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		);
 
 		$so = new Smacs($tpl);
-		$so->filter('addbraces', 'xmlencode', 'skipangle')->apply($kv);
+		$so->filter('keybraces', 'xmlencode', 'skipangle')->apply($kv);
 		$this->assertEquals($expected, $so->__toString());
 
 		$so = new Smacs($tpl);
@@ -556,7 +539,7 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 			22&gt;  <2&2>  &lt;22
 			foot";
 
-		$filters = Smacs::ADDBRACES | Smacs::XMLENCODE | Smacs::SKIPANGLE;
+		$filters = Smacs::KEYBRACES | Smacs::XMLENCODE | Smacs::SKIPANGLE;
 
 		$so = new Smacs($tpl);
 		for($i = 0; $i < 3; $i++) {

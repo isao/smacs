@@ -1,6 +1,8 @@
 <?php
 /**
  * SmacsFile - get contents of a text file to create a Smacs template
+ *
+ * @throws InvalidArgumentException, RuntimeException
  */
 class SmacsFile extends Smacs
 {
@@ -15,7 +17,7 @@ class SmacsFile extends Smacs
 	{
 		$tpl = file_get_contents($file, $flags, $context);
 		if(false === $tpl) {
-			throw new Exception("file $file could not be processed");
+			throw new RuntimeException("file $file could not be processed");
 		}
 		parent::__construct($tpl);
 	}
@@ -23,6 +25,8 @@ class SmacsFile extends Smacs
 
 /**
  * SmacsInclude - let PHP process a file, and use the output as a Smacs template
+ *
+ * @throws InvalidArgumentException, RuntimeException
  */
 class SmacsInclude extends Smacs
 {
@@ -52,15 +56,16 @@ class SmacsInclude extends Smacs
  *                element referenced by $this->pointer
  * @var $pointer  (array) queue of slice markers, used as keys in $nodes array
  * @var $filters  (int) bitmask for matching XMLENCODE, KEYANDENC, etc.
+ * @throws InvalidArgumentException, RuntimeException
  */
 class Smacs
 {
-	const NOFILTERS = 0;
-	const KEYBRACES = 1; const ADDBRACES = 1;
-	const XMLENCODE = 2;
-	const SKIPANGLE = 4;
-	const KEYANDENC = 7; const FILTERALL = 7;//ADDBRACES + XMLENCODE + SKIPANGLE
-	const NO_QUOTES = 8;
+	const NOFILTERS = 0;//do not pre-process key/values passed to apply()
+	const KEYBRACES = 1;//add braces to keys
+	const XMLENCODE = 2;//encode <&'"> chars in values
+	const SKIPANGLE = 4;//skips XMLENCODE on values whose keys contain a ">" char
+	const FILTERALL = 7;//KEYBRACES + XMLENCODE + SKIPANGLE; default filter()
+	const NO_QUOTES = 8;//do not encode single or double quotes if XMLENCODE used
 
 	protected $base;
 	protected $nodes;
@@ -76,9 +81,10 @@ class Smacs
 	}
 
 	/**
-	 * Apply key/value pairs to template, modifying them depending on filter(s)
-	 * @see $this->filter()
-	 * @param (mixed) arrays or objects having keys/values to replace in template
+	 * Apply key/value pairs to template. Keys and/or values may be modified if
+	 * $this->filter() was called beforehand.
+	 * @param (mixed) arrays or objects having properties or key/value pairs to
+	 * replace in template or slice
 	 */
 	public function apply(/* array(s) and/or object(s) */)
 	{
@@ -86,7 +92,7 @@ class Smacs
 		foreach(func_get_args() as $kvs) {
 			foreach($kvs as $k => $v) {
 				if(is_scalar($v)) {
-					$keys[] = $this->filters & self::ADDBRACES ? '{'.$k.'}' : $k;
+					$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
 					$vals[] = $this->filters & self::XMLENCODE
 						&& (($this->filters ^ self::SKIPANGLE) && !strpos($k, '>'))
 						? htmlspecialchars($v, $quoteflag, 'UTF-8')
@@ -104,31 +110,14 @@ class Smacs
 	}
 
 	/**
-	 * Set flags to use to manipulate the keys and/or values provided by the next
-	 *  $this->apply() call, before they are applied to the slice or template
+	 * Set $this->filters which determine how the keys and/or values provided by
+	 * the next apply() call might be pre-processed before they are applied to a
+	 * slice or template. The filters setting is reset to NOFILTERS after apply()
 	 *
-	 * @param (mixed) string(s) or int(s) corresponing to this class's constants
-	 *
-	 * @example
-	 *   $this->filter('keybraces');
-	 *   $this->filter('keybraces', 'xmlencode');
-	 *   $this->filter(Smacs::FILTERALL, Smacs::NO_QUOTES);
-	 *   $this->filter(Smacs::FILTERALL| Smacs::NO_QUOTES);
-	 *   $this->filter(Smacs::FILTERALL^ Smacs::SKIPANGLE);
-	 * 
-	 * @note filter behaviors
-	 *    keybraces - add { and } to keys
-	 *    addbraces - add { and } to keys
-	 *    xmlencode - replace <&'"> with xml/html entities in values
-	 *    skipangle - if xmlencode flag is set, and key contains a '>' DO NOT
-	 *                replace <&'"> with xml/html entities in values
-	 *    keyandenc - same as 'keybraces', 'xmlencode', 'skipangle'
-	 *    filterall - same as 'keybraces', 'xmlencode', 'skipangle'
-	 *    no_quotes - if xmlencode flag is set, encode only <&> characters in
-	 *                values; DO NOT encode single or double quotes
-	 *
-	 * @note encode replacement values if 'xmlencode' flag is set, but NOT if the
-	 *  key contains a '>' and the 'skipangle' flag is set
+	 * @param (mixed) string(s) or int(s) corresponing to this class's constants.
+	 * if no arguments, FILTERALL is assumed. Comma seperated arguments are OR'd,
+	 * For other combinations, use bitwise operators on the class constants first,
+	 * and pass the resulting integer.
 	 */
 	public function filter(/* filter string(s) or int(s) */)
 	{
@@ -155,7 +144,7 @@ class Smacs
 	public function slice($mark)
 	{
 		if(!strlen($mark)) {
-			throw new Exception('slice marker not specified', E_USER_ERROR);
+			throw new InvalidArgumentException('slice marker not specified');
 		}
 		if(!isset($this->nodes[$mark])) {
 			$this->nodes[$mark] = new SmacsSlice($mark, $this->base);
@@ -202,9 +191,10 @@ class Smacs
 
 /**
  * Helper object to represent simple, non-repeating, template data. Completely
- * encapsulated within Smacs and SmacsSlice objects
+ * encapsulated within Smacs objects, do not instantiate directly.
  *
  * @var $buffer (string) template containing placeholders and markers
+ * @throws InvalidArgumentException
  */
 class SmacsBase
 {
@@ -234,8 +224,10 @@ class SmacsBase
 	 */
 	public function absorb(SmacsSlice $inner)
 	{
-		$this->buffer = preg_replace($inner->context, $inner->buffer, $this->buffer, 1, $ok);
-		if(!$ok) {
+		$this->buffer = preg_replace(
+			$inner->context, $inner->buffer, $this->buffer, 1, $count
+		);
+		if(!$count) {
 			trigger_error('slice not absorbed', E_USER_WARNING);
 		}
 		$inner->buffer = '';
@@ -250,7 +242,7 @@ class SmacsBase
 	protected function _checkString($str)
 	{
 		if(!is_string($str)) {
-			throw new Exception('expected string, not '.gettype($str));
+			throw new InvalidArgumentException('expected string, not '.gettype($str));
 		} elseif(!strlen($str)) {
 			trigger_error('empty string', E_USER_NOTICE);
 		}
@@ -260,9 +252,11 @@ class SmacsBase
 
 /**
  * Helper object to represent sub-sections of templates that repeat (like rows).
+ * Completely encapsulated within Smacs objects, do not instantiate directly.
  * 
  * @var $context (string) regex that obtains $pattern from $base->buffer 
  * @var $pattern (string) read-only sub-template, used with each apply()
+ * @throws RuntimeException
  */
 class SmacsSlice extends SmacsBase
 {
@@ -280,7 +274,7 @@ class SmacsSlice extends SmacsBase
 			$this->pattern = $match[1];
 			$this->buffer = '';
 		} else {
-			throw new Exception("slice '$mark' not found", E_USER_ERROR);
+			throw new RuntimeException("slice '$mark' not found", E_USER_ERROR);
 		}
 	}
 
