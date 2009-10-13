@@ -557,5 +557,34 @@ class SmacsTest extends PHPUnit_Framework_TestCase
 		$this->assertEquals($expected, $so->__toString());
 	}
 
+	public function testNullStringKeysIgnored()
+	{
+		$tpl = "hello {world}";
+		$expected = 'hello whirled';
+		
+		$kv = array(
+			'{world}' => 'whirled',
+			'' => '?',//checking that a null string key won't do anything
+		);
+		
+		$so = new Smacs($tpl);
+		$so->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+	}
+
+	public function testNumericIndexArrayKeysIgnored()
+	{
+		$tpl = "hello {world}, who's number 1?";
+		$expected = "hello whirled, who's number 1?";
+		
+		$kv = array(
+			1 => 'numeric keys ignored',//checking we ignore numeric array indexes
+			'{world}' => 'whirled',
+		);
+		
+		$so = new Smacs($tpl);
+		$so->apply($kv);
+		$this->assertEquals($expected, $so->__toString());
+	}
 
 }
