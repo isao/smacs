@@ -83,6 +83,7 @@ class Smacs
 	/**
 	 * Apply key/value pairs to template. Keys and/or values may be modified if
 	 * $this->filter() was called beforehand.
+	 * @note key/values are ignored if keys are not strings, OR values not scalar
 	 * @param (mixed) arrays or objects having properties or key/value pairs to
 	 * replace in template or slice
 	 */
