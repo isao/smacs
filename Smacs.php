@@ -92,7 +92,7 @@ class Smacs
 		$quoteflag = $this->filters & self::NO_QUOTES ? ENT_NOQUOTES : ENT_QUOTES;
 		foreach(func_get_args() as $kvs) {
 			foreach($kvs as $k => $v) {
-				if(is_string($k) && is_scalar($v)) {
+				if(is_string($k) && (is_scalar($v) || is_null($v))) {
 					$keys[] = $this->filters & self::KEYBRACES ? '{'.$k.'}' : $k;
 					$vals[] = $this->filters & self::XMLENCODE
 						&& (($this->filters ^ self::SKIPANGLE) && !strpos($k, '>'))
