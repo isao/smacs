@@ -86,6 +86,7 @@ class Smacs
 	 * @note key/values are ignored if keys are not strings, OR values not scalar
 	 * @param (mixed) arrays or objects having properties or key/value pairs to
 	 * replace in template or slice
+	 * @return (int) number of keys in slice pattern that were replaced
 	 */
 	public function apply(/* array(s) and/or object(s) */)
 	{
@@ -102,7 +103,7 @@ class Smacs
 			}
 		}
 		$this->filters = self::NOFILTERS;
-		$this->_lastNode()->apply($keys, $vals);
+		return $this->_lastNode()->apply($keys, $vals);
 	}
 
 	public function append($str)
