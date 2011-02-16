@@ -8,12 +8,12 @@ class SmacsFile extends Smacs
 {
 	/**
 	 * @param (string) path to file to read
-	 * @param (int) optional flags, like FILE_USE_INCLUDE_PATH
+	 * @param (int) optional file_get_contents flags, like FILE_USE_INCLUDE_PATH
 	 * @param (resource) optional stream_context_create() resource
 	 * @see http://php.net/file_get_contents
 	 * @see http://php.net/stream_context_create
 	 */
-	public function __construct($file, $flags = 0, $context = null)
+	public function __construct($file, $flags = FILE_USE_INCLUDE_PATH, $context = null)
 	{
 		$tpl = file_get_contents($file, $flags, $context);
 		if(false === $tpl) {
