@@ -1,6 +1,5 @@
 <?php
 require_once dirname(dirname(__FILE__)).'/Smacs.php';
-require_once 'PHPUnit/Framework.php';
 
 class SmacsTest extends PHPUnit_Framework_TestCase
 {

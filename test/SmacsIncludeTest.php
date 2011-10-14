@@ -6,7 +6,6 @@ set_include_path(
 );
 
 require_once 'Smacs.php';
-require_once 'PHPUnit/Framework.php';
 
 class SmacsIncludeTest extends PHPUnit_Framework_TestCase
 {	
